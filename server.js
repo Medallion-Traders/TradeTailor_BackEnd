@@ -8,26 +8,18 @@ import morgan from 'morgan'
 import { userRouter } from './routes/users.js'
 import stockdata from './routes/stockdata.js'
 import verifyToken from './middleware/auth.js'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 const app = express()
 
-/* Load environment variables from the correct .env file */
-const envFile = process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env'
-dotenv.config({ path: path.resolve(__dirname, envFile) })
+dotenv.config()
 
 /* CONFIGURATION */
-app.use(express.json())
 app.use(
   cors({
     origin: process.env.REACT_APP_URL,
   })
 )
+app.use(express.json())
 app.use(helmet())
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }))
 app.use(morgan('common'))
@@ -37,7 +29,18 @@ app.use(bodyParser.urlencoded({ extended: true }))
 app.use('/auth', userRouter)
 app.use('/api', verifyToken, stockdata)
 
-mongoose.connect(process.env.MONGODB_URI)
+/* SERVER SUCCESSFUL DEPLOYMENT*/
+app.get('/', function(request, response) {
+  response.send('Hello World!')
+})
+
+const uri = process.env.MONGODB_URI
+
+mongoose
+  .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB Connected...'))
+  .catch((err) => console.log(err))
+
 app.listen(process.env.PORT || 3001, () =>
   console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)
 )
