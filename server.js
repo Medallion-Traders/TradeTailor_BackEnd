@@ -31,7 +31,7 @@ app.use('/api', verifyToken, stockdata)
 
 /* SERVER SUCCESSFUL DEPLOYMENT*/
 app.get('/', function(request, response) {
-  response.send('Hello World!')
+  response.send('Server Started Successfully')
 })
 
 const uri = process.env.MONGODB_URI
