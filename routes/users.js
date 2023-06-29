@@ -17,9 +17,7 @@ router.post("/register", async (req, res) => {
         const isValidEmail = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
 
         if (!isValidEmail) {
-            return res
-                .status(400)
-                .json({ message: email + " is not a valid email" });
+            return res.status(400).json({ message: email + " is not a valid email" });
         }
 
         let user = await UserModel.findOne({ email });
@@ -43,11 +41,7 @@ router.post("/register", async (req, res) => {
         sendEmail(newUser);
 
         await newUser.save();
-        return res
-            .status(201)
-            .json(
-                "User registered successfully, proceed to login/verify email"
-            );
+        return res.status(201).json("User registered successfully, proceed to login/verify email");
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: error });
@@ -59,9 +53,7 @@ router.post("/login", async (req, res) => {
         const { email, password } = req.body;
         const user = await UserModel.findOne({ email });
         if (!user) {
-            return res
-                .status(404)
-                .json({ message: "User not found, please register" });
+            return res.status(404).json({ message: "User not found, please register" });
         }
 
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
@@ -76,11 +68,9 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        const token = jwt.sign(
-            { email: user.email, id: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" }
-        );
+        const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: "1h",
+        });
         delete user.password;
         return res.status(200).json({ token, user });
     } catch (error) {
