@@ -24,6 +24,15 @@ const userSchema = mongoose.Schema({
         type: String,
         required: false,
     },
+    balance: {
+        type: Number,
+        default: 500000, // default balance is set to 500,000
+    },
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+    },
 });
 
 const UserModel = mongoose.model("users", userSchema);
