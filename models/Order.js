@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 
-const transactionSchema = mongoose.Schema(
+const OrderSchema = mongoose.Schema(
     {
         user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "UserModel", // The model name that userSchema is registered with
+            ref: "UserModel",
             required: true,
         },
         company: {
@@ -27,12 +27,22 @@ const transactionSchema = mongoose.Schema(
             type: Number,
             required: true,
         },
+        status: {
+            type: String,
+            enum: ["open", "pending", "closed"],
+            default: "open",
+        },
+        profit: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true, // This will add 'createdAt' and 'updatedAt' fields
     }
 );
 
-const TransactionModel = mongoose.model("Transaction", transactionSchema);
+const LimitOrderModel = mongoose.model("LimitOrder", OrderSchema);
+const MarketOrderModel = mongoose.model("MarketOrder", OrderSchema);
 
-export default TransactionModel;
+export { LimitOrderModel, MarketOrderModel };
