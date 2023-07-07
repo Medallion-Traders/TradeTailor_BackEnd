@@ -22,7 +22,6 @@ const verifyToken = async (req, res, next) => {
 
         const verified = jwt.verify(token, process.env.JWT_SECRET);
         req.user = verified;
-        next();
     } catch (error) {
         if (error.name === "TokenExpiredError") {
             return res.status(401).json({ message: "Token Expired" });
@@ -31,6 +30,7 @@ const verifyToken = async (req, res, next) => {
         console.log(error);
         return res.status(400).json({ message: "Internal Server Error" });
     }
+    next();
 };
 
 export default verifyToken;

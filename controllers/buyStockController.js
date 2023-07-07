@@ -4,11 +4,25 @@ import { LimitOrderModel, MarketOrderModel } from "../models/Order.js";
 
 dotenv.config();
 
+// Companies data
+const companies = [
+    { id: "1", name: "Apple", symbol: "AAPL" },
+    { id: "2", name: "Google", symbol: "GOOGL" },
+    { id: "3", name: "Microsoft", symbol: "MSFT" },
+    { id: "4", name: "Amazon", symbol: "AMZN" },
+    { id: "5", name: "Meta Platforms Inc", symbol: "META" },
+    { id: "6", name: "Tesla", symbol: "TSLA" },
+    { id: "7", name: "Netflix", symbol: "NFLX" },
+    { id: "8", name: "IBM", symbol: "IBM" },
+    { id: "9", name: "Intel", symbol: "INTC" },
+    { id: "10", name: "Adobe", symbol: "ADBE" },
+    // Add more companies as needed
+];
+
 const buyStockFunction = async (req, res) => {
     try {
         const { company, quantity, orderType, totalAmount, unitPrice } = req.body;
-
-        //Validate the data
+        // Validate the data
         if (!company || !quantity || !orderType || !totalAmount || !unitPrice) {
             return res.status(400).json({ message: "Please fill in all fields" });
         }
@@ -18,10 +32,7 @@ const buyStockFunction = async (req, res) => {
                 .json({ message: `Please enter a valid quantity, quantity cannot be ${quantity}` });
         }
 
-        //The token sent from the auth middleware is used in the user id field below
-        //Market orders are automatically filled and their status is set to "open"
-
-        if (orderType === "market") {
+        if (orderType == "market") {
             try {
                 const newMarketOrder = new MarketOrderModel({
                     user: req.user.id,
@@ -35,23 +46,21 @@ const buyStockFunction = async (req, res) => {
                 });
 
                 await newMarketOrder.save();
+                return res.status(200).json({ message: "Market order successfully placed." });
             } catch (error) {
-                res.status(500).json({
+                return res.status(500).json({
                     message: "An error occurred while trying to send a market order.",
                 });
             }
         } else if (orderType === "limit") {
             try {
-                //Query AlphaVantage to see if the order can be filled immediately
                 const response = await axios.get(
                     `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${company}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
                 );
 
-                // Extract the stock price from the Alpha Vantage API response
                 const current_price = response.data["Global Quote"]["05. price"];
 
                 if (current_price <= unitPrice) {
-                    //If the price is lesser than or equal to the limit price, fill the order, and rename it as market order price
                     const newMarketOrder = new MarketOrderModel({
                         user: req.user.id,
                         company,
@@ -63,7 +72,7 @@ const buyStockFunction = async (req, res) => {
                         profit: 0,
                     });
                     await newMarketOrder.save();
-                    res.status(200).json({
+                    return res.status(200).json({
                         message:
                             "Stock purchase was successful, your limit order was converted to market order and filled at market price" +
                             current_price,
@@ -80,19 +89,18 @@ const buyStockFunction = async (req, res) => {
                         profit: 0,
                     });
                     await newLimitOrder.save();
-                    res.json({ message: "Limit order was successfully placed!" });
+                    return res.json({ message: "Limit order was successfully placed!" });
                 }
             } catch (error) {
-                res.status(500).json({
+                return res.status(500).json({
                     message: "An error occurred while trying to send a limit order.",
                 });
             }
         } else {
-            //Likely frontend response setting error
             return res.status(400).json({ message: "Please enter a valid order type" });
         }
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             message: "An error occurred while trying to buy stock.",
         });
     }
