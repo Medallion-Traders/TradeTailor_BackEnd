@@ -113,3 +113,5 @@ export const getUserBalance = async (req, res) => {
         res.status(500).json({ message: "An error occurred while fetching the user's balance" });
     }
 };
+
+export const resetBalance = (req, res) => {};

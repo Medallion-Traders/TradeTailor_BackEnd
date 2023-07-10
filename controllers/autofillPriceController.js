@@ -20,23 +20,23 @@ const companies = [
 
 // Stock price endpoint
 export const autoFillFunction = async (req, res) => {
-    // Find the company in our data that matches the ID from the URL
-    const company = companies.find((c) => c.id === req.params.companyId);
+    // Find the ticker in our data that matches the ID from the URL
+    const company_list = companies.find((c) => c.id === req.params.companyId);
 
-    if (!company) {
-        // If we couldn't find a company with the provided ID, send a 404 response
-        res.status(404).json({ error: "Company not found" });
+    if (!company_list) {
+        // If we couldn't find a ticker with the provided ID, send a 404 response
+        res.status(404).json({ error: "ticker not found" });
         return;
     }
 
     try {
-        // Make a request to the Alpha Vantage API to get the stock price
+        // Make a request to the websocket to get the stock price
         const response = await axios.get(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${company.symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+            `${process.env.REACT_APP_WEBSOCKET_URL}/webSocket/price/${company_list.symbol}`
         );
 
-        // Extract the stock price from the Alpha Vantage API response
-        const price = response.data["Global Quote"]["05. price"];
+        // Extract the stock price from the websocket response
+        const price = response.price;
 
         // Send the stock price in the response
         res.status(200).json({ price });

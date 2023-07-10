@@ -7,11 +7,15 @@ const OrderSchema = mongoose.Schema(
             ref: "UserModel",
             required: true,
         },
-        company: {
+        ticker: {
             type: String,
             required: true,
         },
-        quantity: {
+        fixedQuantity: {
+            type: Number,
+            required: true,
+        },
+        currentQuantity: {
             type: Number,
             required: true,
         },
@@ -27,14 +31,17 @@ const OrderSchema = mongoose.Schema(
             type: Number,
             required: true,
         },
-        status: {
+        filledStatus: {
             type: String,
-            enum: ["open", "pending", "closed"],
-            default: "open",
+            enum: ["pending", "filled", "cancelled"],
         },
-        profit: {
-            type: Number,
-            default: 0,
+        marketStatus: {
+            type: String,
+            enum: ["undefined", "open", "closed"],
+        },
+        direction: {
+            type: String,
+            enum: ["long", "short"],
         },
     },
     {
@@ -42,7 +49,6 @@ const OrderSchema = mongoose.Schema(
     }
 );
 
-const LimitOrderModel = mongoose.model("LimitOrder", OrderSchema);
-const MarketOrderModel = mongoose.model("MarketOrder", OrderSchema);
+const Order = mongoose.model("Order", OrderSchema);
 
-export { LimitOrderModel, MarketOrderModel };
+export { Order };

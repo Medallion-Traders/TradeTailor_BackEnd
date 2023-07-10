@@ -1,0 +1,390 @@
+import cron from "node-cron";
+import PortfolioModel from "../models/Portfolio.js";
+import PositionModel from "../models/Position.js";
+import Order from "../models/Order.js";
+import getCurrentPrice from "./queryWebSocket.js";
+
+// Utility function for handling errors
+function handleErrors(fn) {
+    return function(...args) {
+        return fn(...args).catch((err) => {
+            console.error(`Function ${fn.name} broke and raised ${err}`);
+        });
+    };
+}
+
+// Utility function for fetching position
+async function fetchPosition(positionId) {
+    const position = await PositionModel.findById(positionId);
+    if (!position) throw new Error("Position not found");
+    return position;
+}
+
+// Utility function for calculating average price
+function calculateAveragePrice(position, newOrder) {
+    const totalQuantity = position.quantity + newOrder.fixedQuantity;
+    // Prevent divison by zero
+    if (totalQuantity === 0) {
+        return 0;
+    }
+    const totalCost =
+        position.averagePrice * position.quantity + newOrder.unitPrice * newOrder.fixedQuantity;
+    return totalCost / totalQuantity;
+}
+
+// Utility function for closing orders
+async function closeOrders(orders) {
+    await Promise.all(
+        orders.map(async (order) => {
+            order.currentQuantity = 0;
+            order.marketStatus = "closed";
+            await order.save();
+        })
+    );
+}
+
+// Utility function for handling partial order closure
+async function handlePartialClosure(orders, moving_quantity) {
+    for (let order of orders) {
+        if (moving_quantity >= order.currentQuantity) {
+            moving_quantity -= order.currentQuantity;
+            order.currentQuantity = 0;
+            order.marketStatus = "closed";
+            await order.save();
+        } else {
+            order.currentQuantity -= moving_quantity;
+            order.marketStatus = "open";
+            await order.save();
+            break;
+        }
+    }
+}
+
+// Wrapped async functions
+const createPortfolio = handleErrors(async function createPortfolio(newOrder, userId) {
+    const newPosition = new PositionModel({
+        ticker: newOrder.ticker,
+        quantity: newOrder.fixedQuantity,
+        averagePrice: newOrder.unitPrice,
+        positionType: newOrder.direction,
+        openingOrders: [newOrder._id],
+        closingOrders: [],
+        profit: 0,
+    });
+
+    await newPosition.save();
+
+    const newPortfolio = new PortfolioModel({
+        user: userId,
+        positions: [newPosition._id],
+    });
+
+    await newPortfolio.save();
+});
+
+const addToLongPosition = handleErrors(async function addToLongPosition(positionId, newOrder) {
+    const position = await fetchPosition(positionId);
+    position.averagePrice = calculateAveragePrice(position, newOrder);
+
+    // Update the position fields
+    position.quantity = position.quantity + newOrder.fixedQuantity;
+    // Add the new order to the opening orders
+    position.openingOrders.push(newOrder._id);
+    // Save the updated position
+    await position.save();
+});
+
+const closeShortPosition = handleErrors(async function closeShortPosition(positionId, newOrder) {
+    const position = await fetchPosition(positionId);
+
+    // Calculate the profit
+    const profit = position.quantity * (position.averagePrice - newOrder.unitPrice);
+    // Update the position fields
+    position.quantity = 0;
+    position.averagePrice = 0;
+    position.profit = profit;
+    position.positionStatus = "closed";
+
+    // Set the marketStatus of the newOrder to be closed
+    newOrder.marketStatus = "closed";
+    await newOrder.save();
+
+    // Add the new order to the closing orders
+    position.closingOrders.push(newOrder._id);
+
+    // Close all openingOrders, both closed and open
+    const populatedPosition = await position.populate("openingOrders");
+    await closeOrders(populatedPosition.openingOrders);
+
+    // Save the updated position
+    await position.save();
+});
+
+const partialCloseShortPosition = handleErrors(async function partialCloseShortPosition(
+    positionId,
+    newOrder
+) {
+    const position = await fetchPosition(positionId);
+
+    // Calculate the profit
+    const profit = newOrder.fixedQuantity * (position.averagePrice - newOrder.unitPrice);
+
+    // Update the position fields
+    position.quantity -= newOrder.fixedQuantity;
+    position.profit += profit;
+
+    //Set the marketStatus of the newOrder to be closed
+    newOrder.marketStatus = "closed";
+    await newOrder.save();
+
+    // Add the new order to the closing orders
+    position.closingOrders.push(newOrder._id);
+
+    // Update the openingOrders field by finding the unclosed orders and closing them in a FIFO style by timestamp
+    let orders = await position.populate("openingOrders").openingOrders;
+    orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    // Save the updated position
+    await position.save();
+});
+
+// Utility function for handling new short positions
+const createNewPosition = handleErrors(async function createNewPosition(newOrder, userId) {
+    const newPosition = new PositionModel({
+        ticker: newOrder.ticker,
+        quantity: newOrder.fixedQuantity,
+        averagePrice: newOrder.unitPrice,
+        positionType: newOrder.direction,
+        openingOrders: [newOrder._id],
+        closingOrders: [],
+        profit: 0,
+    });
+
+    await newPosition.save();
+
+    const portfolio = await PortfolioModel.findOne({ user: userId });
+    if (!portfolio) throw new Error("Portfolio not found");
+    portfolio.positions.push(newPosition._id);
+    await portfolio.save();
+});
+
+// Utility function for updating long position
+const closeLongPosition = handleErrors(async function closeLongPosition(positionId, newOrder) {
+    const position = await fetchPosition(positionId);
+    // Calculate the profit
+    const profit = position.quantity * (newOrder.unitPrice - position.averagePrice);
+    // Update the position fields
+    position.quantity = 0;
+    position.averagePrice = 0;
+    position.profit = profit;
+    position.positionStatus = "closed";
+
+    // Set the marketStatus of the newOrder to be closed
+    newOrder.marketStatus = "closed";
+    await newOrder.save();
+
+    // Add the new order to the closing orders
+    position.closingOrders.push(newOrder._id);
+
+    // Close all openingOrders, both closed and open
+    const populatedPosition = await position.populate("openingOrders");
+    await closeOrders(populatedPosition.openingOrders);
+
+    // Save the updated position
+    await position.save();
+});
+
+// Utility function for handling partial long position closure
+const partialCloseLongPosition = handleErrors(async function partialCloseLongPosition(
+    positionId,
+    newOrder
+) {
+    const position = await fetchPosition(positionId);
+
+    // Calculate the profit
+    const profit = newOrder.fixedQuantity * (newOrder.unitPrice - position.averagePrice);
+
+    // Update the position fields
+    position.quantity -= newOrder.fixedQuantity;
+    position.profit += profit;
+
+    // Set the marketStatus of the newOrder to be closed
+    newOrder.marketStatus = "closed";
+    await newOrder.save();
+
+    // Add the new order to the closing orders
+    position.closingOrders.push(newOrder._id);
+
+    // Update the openingOrders field by finding the unclosed orders and closing them in a FIFO style by timestamp
+    let orders = await position.populate("openingOrders").openingOrders;
+    orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    await handlePartialClosure(orders, newOrder.fixedQuantity);
+
+    // Save the updated position
+    await position.save();
+});
+
+// Utility function for adding to short position
+const addToShortPosition = handleErrors(async function addToShortPosition(positionId, newOrder) {
+    const position = await fetchPosition(positionId);
+    position.averagePrice = calculateAveragePrice(position, newOrder);
+
+    // Update the position fields
+    position.quantity = position.quantity + newOrder.fixedQuantity;
+    // Add the new order to the opening orders
+    position.openingOrders.push(newOrder._id);
+    // Save the updated position
+    await position.save();
+});
+
+async function processLongPosition(newOrder, userId) {
+    let portfolio = await PortfolioModel.findOne({ user: userId }).populate("positions");
+
+    // If no portfolio, create new portfolio
+    if (!portfolio) {
+        console.log("test1");
+        createPortfolio(newOrder, userId);
+        return;
+    }
+
+    // Find if a position for this ticker if it already exists in this portfolio and its status is "open". There should only be one open position per ticker at any time.
+    const fetchPositions = await Promise.all(
+        portfolio.positions.map((positionId) => fetchPosition(positionId))
+    );
+
+    const position = fetchPositions.find(
+        (position) => position.ticker === newOrder.ticker && position.positionStatus === "open"
+    );
+
+    const positionId = position ? position._id : null;
+
+    // If the position exists in the portfolio, find it
+    if (positionId) {
+        let position = await fetchPosition(positionId);
+        console.log(position);
+
+        // If the position is happens to be a long, add to the long position
+        if (position.positionType === "long") {
+            console.log("test2");
+            await addToLongPosition(position._id, newOrder);
+        }
+        // If the position is a short, the incoming long order is a closing order
+        else {
+            if (position.quantity > newOrder.fixedQuantity) {
+                console.log("test3");
+                await partialCloseShortPosition(position._id, newOrder);
+            } else if (position.quantity === newOrder.fixedQuantity) {
+                console.log("test4");
+                await closeShortPosition(position._id, newOrder);
+            } else {
+                console.log("test5");
+                await closeShortPosition(position._id, newOrder);
+                const remainderOrder = { ...newOrder };
+                remainderOrder.fixedQuantity -= position.quantity;
+                await createNewPosition(remainderOrder, userId);
+            }
+        }
+    }
+    // If the position does not exist, create a new one
+    else {
+        console.log("test6");
+        await createNewPosition(newOrder, userId);
+    }
+}
+
+async function processShortPosition(newOrder, userId) {
+    console.log("test#");
+    let portfolio = await PortfolioModel.findOne({ user: userId }).populate("positions");
+
+    if (!portfolio) {
+        console.log("test7");
+        createPortfolio(newOrder, userId);
+        return;
+    }
+
+    // Find if a position for this ticker if it already exists in this portfolio and its status is "open". There should only be one open position per ticker at any time.
+    const fetchPositions = await Promise.all(
+        portfolio.positions.map((positionId) => fetchPosition(positionId))
+    );
+
+    const position = fetchPositions.find(
+        (position) => position.ticker === newOrder.ticker && position.positionStatus === "open"
+    );
+
+    const positionId = position ? position._id : null;
+
+    // If the position exists and it is a short position
+    if (positionId) {
+        console.log("test8");
+        let position = await fetchPosition(positionId);
+
+        // If the position is happens to be a short, add to the short position
+        if (position.positionType === "short") {
+            console.log("test2");
+            await addToShortPosition(position._id, newOrder);
+        }
+        // If the position is a long, the incoming short order is a closing order
+        else {
+            if (position.quantity > newOrder.fixedQuantity) {
+                console.log("test3");
+                await partialCloseLongPosition(position._id, newOrder);
+            } else if (position.quantity === newOrder.fixedQuantity) {
+                console.log("test4");
+                await closeLongPosition(position._id, newOrder);
+            } else {
+                console.log("test5");
+                await closeLongPosition(position._id, newOrder);
+                const remainderOrder = { ...newOrder };
+                remainderOrder.fixedQuantity -= position.quantity;
+                await createNewPosition(remainderOrder, userId);
+            }
+        }
+    }
+    // If the position does not exist, create a new one
+    else {
+        console.log("test13");
+        await createNewPosition(newOrder, userId);
+    }
+}
+
+async function fillOrder(order) {
+    if (order.orderType === "market") {
+        const price = await getCurrentPrice(order.ticker);
+        order.filledStatus = "filled";
+        order.unitPrice = price;
+        await order.save();
+
+        if (order.direction == "long") {
+            processLongPosition(order, order.user);
+        } else {
+            processShortPosition(order, order.user);
+        }
+    } else if (order.orderType === "limit") {
+        const price = await getCurrentPrice(order.ticker);
+        if (price >= order.unitPrice) {
+            const price = await getCurrentPrice(order.ticker);
+            order.filledStatus = "filled";
+            order.unitPrice = price;
+            await order.save();
+
+            if (order.direction == "long") {
+                processLongPosition(order, order.user);
+            } else {
+                processShortPosition(order, order.user);
+            }
+        }
+    }
+}
+
+cron.schedule("*/5 10-16 * * 1-5", async () => {
+    const orders = await Order.find({ filledStatus: "pending" });
+
+    // Create an array of promises
+    const promises = orders.map(fillOrder);
+
+    // Wait for all promises to resolve
+    await Promise.all(promises);
+});
+
+// Exports
+export { processLongPosition, processShortPosition, fillOrder };
