@@ -5,7 +5,12 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import morgan from "morgan";
+import users from "./routes/users.js";
+import transactions from "./routes/transactions.js";
 import verifyToken from "./middleware/auth.js";
+import stockdata from "./routes/data.js";
+
+const app = express();
 import stockdata from "./routes/data.js";
 import transactions from "./routes/transactions.js";
 import users from "./routes/users.js";
@@ -13,8 +18,6 @@ import webSocketRouter from "./routes/webSocket.js";
 import summary from "./routes/summary.js";
 
 dotenv.config();
-
-const { REACT_APP_URL, REACT_APP_SERVER_URL, PORT, MONGODB_URI } = process.env;
 
 // This function sets up the test user for the app to simulate JWT token usage
 function testUser(req, res, next) {
@@ -41,28 +44,23 @@ function setupMiddleware(app) {
 // This function sets up all the routes for the app
 function setupRoutes(app) {
     app.use("/auth", users);
-    app.use("/data", verifyToken, stockdata);
-    app.use("/transactions", verifyToken, transactions);
+    app.use("/api", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
-    app.use("/webSocket", webSocketRouter);
-    app.use("/summary", summary);
 }
 
-// This function connects to the MongoDB database
 async function connectDatabase() {
     try {
-        await mongoose.connect(MONGODB_URI, {
+        await mongoose.connect(process.env.MONGODB_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         });
         console.log("MongoDB Connected...");
     } catch (error) {
-        console.error("Failed to connect to MongoDB", error);
+        console.error("Failed to connect to MongoDB ", error);
         process.exit(1);
     }
 }
 
-// The main function that starts the app
 async function start() {
     const app = express();
 
@@ -70,7 +68,9 @@ async function start() {
     setupRoutes(app);
     await connectDatabase();
 
-    app.listen(PORT || 3001, () => console.log(`SERVER STARTED ON ${REACT_APP_SERVER_URL}`));
+    app.listen(process.env.PORT || 3001, () =>
+        console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)
+    );
 }
 
 start();

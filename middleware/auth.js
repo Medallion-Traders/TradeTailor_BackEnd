@@ -36,6 +36,7 @@ const verifyToken = async (req, res, next) => {
         console.log(error);
         return res.status(400).json({ message: "Internal Server Error" });
     }
+    next();
 };
 
 export default verifyToken;
