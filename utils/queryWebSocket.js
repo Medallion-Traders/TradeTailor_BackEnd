@@ -8,19 +8,48 @@ dotenv.config();
     @param {String}
     @returns {Number}
 */
-async function getCurrentPrice(ticker) {
+async function getCurrentPrice(symbol) {
     try {
         //Query the websocket to get current_price
-        const ticker_price_object = await axios
-            .get(`${process.env.REACT_APP_WEBSOCKET_URL}/webSocket/price/${ticker}`)
+        const symbol_price_object = await axios
+            .get(`${process.env.REACT_APP_WEBSOCKET_URL}/webSocket/price/${symbol}`)
             .catch((error) => {
                 console.log(error);
             });
-        // Extract the stock price from the { ticker, price } response
-        return ticker_price_object.data.price;
+        // Extract the stock price from the { symbol, price } response
+        return symbol_price_object.data.price;
     } catch (e) {
         console.log(e);
     }
 }
 
-export default getCurrentPrice;
+/*
+    This function queries the websocket to get the current market status
+    @param 
+    @returns {Object} in the form
+    {
+        market_type: usMarket.market_type,
+        primary_exchanges: usMarket.primary_exchanges,
+        local_open: usMarket.local_open,
+        local_close: usMarket.local_close,
+        current_status: usMarket.current_status,
+        notes: usMarket.notes,
+    }
+*/
+
+async function getCurrentMarketStatus() {
+    try {
+        //Query the websocket to get current_price
+        const market_status = await axios
+            .get(`${process.env.REACT_APP_WEBSOCKET_URL}/getMarketStatus`)
+            .catch((error) => {
+                console.log(error);
+            });
+
+        return market_status.data;
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+export { getCurrentPrice, getCurrentMarketStatus };

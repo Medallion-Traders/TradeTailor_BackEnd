@@ -24,7 +24,7 @@ function testUser(req, res, next) {
 
 // This function sets up all the middleware for the app
 function setupMiddleware(app) {
-    app.use(cors({ origin: REACT_APP_URL }));
+    app.use(cors({ origin: process.env.REACT_APP_URL }));
     app.use(express.json());
     app.use(helmet());
     app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));

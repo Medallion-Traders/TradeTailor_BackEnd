@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const PositionSchema = mongoose.Schema(
     {
-        ticker: {
+        symbol: {
             type: String,
             required: true,
         },

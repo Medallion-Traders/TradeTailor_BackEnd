@@ -7,7 +7,7 @@ const OrderSchema = mongoose.Schema(
             ref: "UserModel",
             required: true,
         },
-        ticker: {
+        symbol: {
             type: String,
             required: true,
         },

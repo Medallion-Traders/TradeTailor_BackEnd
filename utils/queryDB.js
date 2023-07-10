@@ -1,8 +1,8 @@
 import cron from "node-cron";
 import PortfolioModel from "../models/Portfolio.js";
 import PositionModel from "../models/Position.js";
-import Order from "../models/Order.js";
-import getCurrentPrice from "./queryWebSocket.js";
+import { Order } from "../models/Order.js";
+import { getCurrentPrice, getCurrentMarketStatus } from "./queryWebSocket.js";
 
 // Utility function for handling errors
 function handleErrors(fn) {
@@ -63,7 +63,7 @@ async function handlePartialClosure(orders, moving_quantity) {
 // Wrapped async functions
 const createPortfolio = handleErrors(async function createPortfolio(newOrder, userId) {
     const newPosition = new PositionModel({
-        ticker: newOrder.ticker,
+        symbol: newOrder.symbol,
         quantity: newOrder.fixedQuantity,
         averagePrice: newOrder.unitPrice,
         positionType: newOrder.direction,
@@ -151,7 +151,7 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
 // Utility function for handling new short positions
 const createNewPosition = handleErrors(async function createNewPosition(newOrder, userId) {
     const newPosition = new PositionModel({
-        ticker: newOrder.ticker,
+        symbol: newOrder.symbol,
         quantity: newOrder.fixedQuantity,
         averagePrice: newOrder.unitPrice,
         positionType: newOrder.direction,
@@ -246,13 +246,13 @@ async function processLongPosition(newOrder, userId) {
         return;
     }
 
-    // Find if a position for this ticker if it already exists in this portfolio and its status is "open". There should only be one open position per ticker at any time.
+    // Find if a position for this symbol if it already exists in this portfolio and its status is "open". There should only be one open position per symbol at any time.
     const fetchPositions = await Promise.all(
         portfolio.positions.map((positionId) => fetchPosition(positionId))
     );
 
     const position = fetchPositions.find(
-        (position) => position.ticker === newOrder.ticker && position.positionStatus === "open"
+        (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
     );
 
     const positionId = position ? position._id : null;
@@ -294,13 +294,13 @@ async function processShortPosition(newOrder, userId) {
         return;
     }
 
-    // Find if a position for this ticker if it already exists in this portfolio and its status is "open". There should only be one open position per ticker at any time.
+    // Find if a position for this symbol if it already exists in this portfolio and its status is "open". There should only be one open position per symbol at any time.
     const fetchPositions = await Promise.all(
         portfolio.positions.map((positionId) => fetchPosition(positionId))
     );
 
     const position = fetchPositions.find(
-        (position) => position.ticker === newOrder.ticker && position.positionStatus === "open"
+        (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
     );
 
     const positionId = position ? position._id : null;
@@ -334,22 +334,13 @@ async function processShortPosition(newOrder, userId) {
 }
 
 async function fillOrder(order) {
-    if (order.orderType === "market") {
-        const price = await getCurrentPrice(order.ticker);
-        order.filledStatus = "filled";
-        order.unitPrice = price;
-        await order.save();
+    const status_object = await getCurrentMarketStatus();
 
-        if (order.direction == "long") {
-            processLongPosition(order, order.user);
-        } else {
-            processShortPosition(order, order.user);
-        }
-    } else if (order.orderType === "limit") {
-        const price = await getCurrentPrice(order.ticker);
-        if (price >= order.unitPrice) {
-            const price = await getCurrentPrice(order.ticker);
+    if (status_object.current_status == "open") {
+        if (order.orderType === "market") {
+            const price = await getCurrentPrice(order.symbol);
             order.filledStatus = "filled";
+            order.marketStatus = "open";
             order.unitPrice = price;
             await order.save();
 
@@ -358,7 +349,25 @@ async function fillOrder(order) {
             } else {
                 processShortPosition(order, order.user);
             }
+        } else if (order.orderType === "limit") {
+            const price = await getCurrentPrice(order.symbol);
+            if (price >= order.unitPrice) {
+                const price = await getCurrentPrice(order.symbol);
+                order.filledStatus = "filled";
+                order.marketStatus = "open";
+                order.unitPrice = price;
+                await order.save();
+
+                if (order.direction == "long") {
+                    processLongPosition(order, order.user);
+                } else {
+                    processShortPosition(order, order.user);
+                }
+            }
         }
+        return { isFilled: true, status_object: status_object };
+    } else {
+        return { isFilled: false, status_object: status_object };
     }
 }
 

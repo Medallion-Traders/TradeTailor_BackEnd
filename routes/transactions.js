@@ -1,9 +1,8 @@
 import express from "express";
-import { buyStockFunction, sellStockFunction } from "../controllers/buyAndSellStockController.js";
+import { stockFunction } from "../controllers/buyAndSellStockController.js";
 
 const transactions = express.Router();
 
-transactions.post("/buy-stock", buyStockFunction);
-transactions.post("/sell-stock", sellStockFunction);
+transactions.post("/order", stockFunction);
 
 export default transactions;
