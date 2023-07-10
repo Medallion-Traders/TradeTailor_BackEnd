@@ -242,7 +242,6 @@ async function processLongPosition(newOrder, userId) {
 
     // If no portfolio, create new portfolio
     if (!portfolio) {
-        console.log("test1");
         createPortfolio(newOrder, userId);
         return;
     }
@@ -265,19 +264,15 @@ async function processLongPosition(newOrder, userId) {
 
         // If the position is happens to be a long, add to the long position
         if (position.positionType === "long") {
-            console.log("test2");
             await addToLongPosition(position._id, newOrder);
         }
         // If the position is a short, the incoming long order is a closing order
         else {
             if (position.quantity > newOrder.fixedQuantity) {
-                console.log("test3");
                 await partialCloseShortPosition(position._id, newOrder);
             } else if (position.quantity === newOrder.fixedQuantity) {
-                console.log("test4");
                 await closeShortPosition(position._id, newOrder);
             } else {
-                console.log("test5");
                 await closeShortPosition(position._id, newOrder);
                 const remainderOrder = { ...newOrder };
                 remainderOrder.fixedQuantity -= position.quantity;
@@ -287,17 +282,14 @@ async function processLongPosition(newOrder, userId) {
     }
     // If the position does not exist, create a new one
     else {
-        console.log("test6");
         await createNewPosition(newOrder, userId);
     }
 }
 
 async function processShortPosition(newOrder, userId) {
-    console.log("test#");
     let portfolio = await PortfolioModel.findOne({ user: userId }).populate("positions");
 
     if (!portfolio) {
-        console.log("test7");
         createPortfolio(newOrder, userId);
         return;
     }
@@ -315,24 +307,19 @@ async function processShortPosition(newOrder, userId) {
 
     // If the position exists and it is a short position
     if (positionId) {
-        console.log("test8");
         let position = await fetchPosition(positionId);
 
         // If the position is happens to be a short, add to the short position
         if (position.positionType === "short") {
-            console.log("test2");
             await addToShortPosition(position._id, newOrder);
         }
         // If the position is a long, the incoming short order is a closing order
         else {
             if (position.quantity > newOrder.fixedQuantity) {
-                console.log("test3");
                 await partialCloseLongPosition(position._id, newOrder);
             } else if (position.quantity === newOrder.fixedQuantity) {
-                console.log("test4");
                 await closeLongPosition(position._id, newOrder);
             } else {
-                console.log("test5");
                 await closeLongPosition(position._id, newOrder);
                 const remainderOrder = { ...newOrder };
                 remainderOrder.fixedQuantity -= position.quantity;
@@ -342,7 +329,6 @@ async function processShortPosition(newOrder, userId) {
     }
     // If the position does not exist, create a new one
     else {
-        console.log("test13");
         await createNewPosition(newOrder, userId);
     }
 }
