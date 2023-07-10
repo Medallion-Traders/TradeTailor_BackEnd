@@ -5,12 +5,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import morgan from "morgan";
-import users from "./routes/users.js";
-import transactions from "./routes/transactions.js";
 import verifyToken from "./middleware/auth.js";
-import stockdata from "./routes/data.js";
-
-const app = express();
 import stockdata from "./routes/data.js";
 import transactions from "./routes/transactions.js";
 import users from "./routes/users.js";
@@ -44,8 +39,11 @@ function setupMiddleware(app) {
 // This function sets up all the routes for the app
 function setupRoutes(app) {
     app.use("/auth", users);
-    app.use("/api", verifyToken, transactions);
+    app.use("/data", verifyToken, stockdata);
+    app.use("/transactions", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
+    app.use("/webSocket", webSocketRouter);
+    app.use("/summary", summary);
 }
 
 async function connectDatabase() {
@@ -63,7 +61,6 @@ async function connectDatabase() {
 
 async function start() {
     const app = express();
-
     setupMiddleware(app);
     setupRoutes(app);
     await connectDatabase();
