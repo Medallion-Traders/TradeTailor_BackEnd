@@ -26,9 +26,9 @@ const stockFunction = async (req, res) => {
         });
 
         if (transactionType === "buy") {
-            await processOrder(newOrder, "long");
+            await processOrder(newOrder, "long", res);
         } else {
-            await processOrder(newOrder, "short");
+            await processOrder(newOrder, "short", res);
         }
     } catch (error) {
         console.error("Error buying/selling stock:", error);
@@ -36,7 +36,7 @@ const stockFunction = async (req, res) => {
     }
 };
 
-async function processOrder(newOrder, direction) {
+async function processOrder(newOrder, direction, res) {
     try {
         newOrder.direction = direction;
         const { isFilled, status_object } = await fillOrder(newOrder);
@@ -104,6 +104,7 @@ async function processOrder(newOrder, direction) {
             }
         }
     } catch (error) {
+        console.error(error);
         res.status(500).json({
             message: "An error occurred while trying to send an order.",
         });
