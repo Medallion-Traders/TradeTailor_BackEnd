@@ -4,7 +4,7 @@ import PortfolioModel from "../models/Portfolio.js";
 async function getPendingOrders(req, res) {
     try {
         const userId = req.user.id;
-        console.log(userId);
+
         const orders = await Order.find({
             user: userId,
             orderType: "limit",
@@ -20,15 +20,18 @@ async function getPendingOrders(req, res) {
 async function getOpenPositions(req, res) {
     try {
         const userId = req.user.id;
-        console.log(userId);
+
         let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
             path: "positions",
             match: { positionStatus: "open" },
         });
         if (!portfolio) {
             console.log(`No portfolio found for user ${userId}`);
+            res.status(200).json([]);
             return;
         }
+        await portfolio.positions.populate("openingOrders");
+        await portfolio.positions.populate("closingOrders");
         res.status(200).json(portfolio.positions);
     } catch (err) {
         console.error(`Function getPortfolio broke and raised ${err}`);
@@ -39,11 +42,18 @@ async function getOpenPositions(req, res) {
 async function getClosedPositions(req, res) {
     try {
         const userId = req.user.id;
-        console.log(userId);
+
         let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
             path: "positions",
             match: { positionStatus: "closed" },
         });
+        if (!portfolio) {
+            console.log(`No portfolio found for user ${userId}`);
+            res.status(200).json([]);
+            return;
+        }
+        await portfolio.positions.populate("openingOrders");
+        await portfolio.positions.populate("closingOrders");
         res.status(200).json(portfolio.positions);
     } catch (err) {
         console.error(`Function getClosedPositions broke and raised ${err}`);

@@ -19,6 +19,10 @@ const PositionSchema = mongoose.Schema(
             enum: ["long", "short"],
             required: true,
         },
+        totalAmount: {
+            type: Number,
+            required: true,
+        },
         openingOrders: [
             {
                 type: mongoose.Schema.Types.ObjectId,
@@ -47,6 +51,6 @@ const PositionSchema = mongoose.Schema(
     }
 );
 
-const PositionModel = mongoose.model("PositionModel", PositionSchema);
+const PositionModel = mongoose.model("PositionModel", PositionSchema, "positionmodels");
 
 export default PositionModel;

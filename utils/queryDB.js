@@ -50,11 +50,13 @@ async function handlePartialClosure(orders, moving_quantity) {
         if (moving_quantity >= order.currentQuantity) {
             moving_quantity -= order.currentQuantity;
             order.currentQuantity = 0;
+            order.totalAmount = 0;
             order.marketStatus = "closed";
             await order.save();
         } else {
             order.currentQuantity -= moving_quantity;
             order.marketStatus = "open";
+            order.totalAmount = order.currentQuantity * order.unitPrice;
             await order.save();
             break;
         }
@@ -68,6 +70,7 @@ const createPortfolio = handleErrors(async function createPortfolio(newOrder, us
         quantity: newOrder.fixedQuantity,
         averagePrice: newOrder.unitPrice,
         positionType: newOrder.direction,
+        totalAmount: newOrder.fixedQuantity * newOrder.unitPrice,
         openingOrders: [newOrder._id],
         closingOrders: [],
         profit: 0,
@@ -92,8 +95,13 @@ const addToLongPosition = handleErrors(async function addToLongPosition(position
 
     // Update the position fields
     position.quantity = position.quantity + newOrder.fixedQuantity;
+
+    //Update the total amount
+    position.totalAmount = position.quantity * position.averagePrice;
+
     // Add the new order to the opening orders
     position.openingOrders.push(newOrder._id);
+
     // Save the updated position
     await position.save();
 
@@ -109,6 +117,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     // Update the position fields
     position.quantity = 0;
     position.averagePrice = 0;
+    position.totalAmount = 0;
     position.profit = profit;
     position.positionStatus = "closed";
 
@@ -154,6 +163,16 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
     let orders = await position.populate("openingOrders").openingOrders;
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
+    //Calculate new Average price and new total amount
+    let total_amount;
+    orders.forEach((order) => {
+        total_amount += order.currentQuantity * order.unitPrice;
+    });
+
+    position.totalAmount = total_amount;
+
+    position.averagePrice = total_amount / position.quantity;
+
     // Save the updated position
     await position.save();
 
@@ -168,6 +187,7 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
         quantity: newOrder.fixedQuantity,
         averagePrice: newOrder.unitPrice,
         positionType: newOrder.direction,
+        totalAmount: newOrder.fixedQuantity * newOrder.unitPrice,
         openingOrders: [newOrder._id],
         closingOrders: [],
         profit: 0,
@@ -193,6 +213,7 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     // Update the position fields
     position.quantity = 0;
     position.averagePrice = 0;
+    position.totalAmount = 0;
     position.profit = profit;
     position.positionStatus = "closed";
 
@@ -240,6 +261,16 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     await handlePartialClosure(orders, newOrder.fixedQuantity);
 
+    //Calculate new Average price and new total amount
+    let total_amount;
+    orders.forEach((order) => {
+        total_amount += order.currentQuantity * order.unitPrice;
+    });
+
+    position.totalAmount = total_amount;
+
+    position.averagePrice = total_amount / position.quantity;
+
     // Save the updated position
     await position.save();
 
@@ -254,6 +285,10 @@ const addToShortPosition = handleErrors(async function addToShortPosition(positi
 
     // Update the position fields
     position.quantity = position.quantity + newOrder.fixedQuantity;
+
+    // Update the total amount
+    position.totalAmount = position.quantity * position.averagePrice;
+
     // Add the new order to the opening orders
     position.openingOrders.push(newOrder._id);
     // Save the updated position
@@ -376,6 +411,7 @@ async function fillOrder(order) {
             order.filledStatus = "filled";
             order.marketStatus = "open";
             order.unitPrice = price;
+            order.totalAmount = order.fixedQuantity * order.unitPrice;
             await order.save();
 
             if (order.direction == "long") {
@@ -389,6 +425,7 @@ async function fillOrder(order) {
                 order.filledStatus = "filled";
                 order.marketStatus = "open";
                 order.unitPrice = price;
+                order.totalAmount = order.fixedQuantity * order.unitPrice;
                 await order.save();
 
                 if (order.direction == "long") {

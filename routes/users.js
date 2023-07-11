@@ -12,6 +12,6 @@ const users = express.Router();
 users.post("/register", registerUser);
 users.post("/login", loginUser);
 users.get("/verify-email", verifyEmail);
-users.get("/balance", verifyToken, getUserBalance);
+users.get("/balance", getUserBalance);
 
 export default users;

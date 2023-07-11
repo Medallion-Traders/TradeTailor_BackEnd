@@ -71,11 +71,12 @@ async function processOrder(newOrder, direction, res) {
                         res.status(200).json({
                             message:
                                 "Your limit order at price " +
-                                current_price +
+                                newOrder.unitPrice +
                                 " was processed, however, the market is currently closed and only opens from " +
                                 status_object.local_open +
-                                " to " +
-                                status_object.local_close,
+                                " Eastern Time to " +
+                                status_object.local_close +
+                                " Eastern Time.",
                         });
                     }
                 }
@@ -96,9 +97,9 @@ async function processOrder(newOrder, direction, res) {
                             newOrder.unitPrice +
                             " was processed, however, the market is currently closed and only opens from " +
                             status_object.local_open +
-                            " to " +
+                            "Eastern time to " +
                             status_object.local_close +
-                            ".Your market order will be immediately filled when the market opens",
+                            "Eastern Time. Your market order will be immediately filled when the market opens",
                     });
                 }
             }
