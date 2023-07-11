@@ -4,7 +4,7 @@ import { fillOrder } from "../utils/queryDB.js";
 const stockFunction = async (req, res) => {
     try {
         const {
-            symbol,
+            company: symbol,
             quantity: fixedQuantity,
             orderType,
             totalAmount,
@@ -63,7 +63,7 @@ async function processOrder(newOrder, direction, res) {
                         res.status(200).json({
                             message:
                                 "Your limit order at price " +
-                                current_price +
+                                newOrder.unitPrice +
                                 " was processed, however the market is currently closed. " +
                                 status_object.notes,
                         });
@@ -84,7 +84,7 @@ async function processOrder(newOrder, direction, res) {
                     res.status(200).json({
                         message:
                             "Your market order at price " +
-                            current_price +
+                            newOrder.unitPrice +
                             " was processed, however the market is currently closed. " +
                             status_object.notes +
                             ".Your market order will be immediately filled when the market opens",
@@ -93,7 +93,7 @@ async function processOrder(newOrder, direction, res) {
                     res.status(200).json({
                         message:
                             "Your market order at price " +
-                            current_price +
+                            newOrder.unitPrice +
                             " was processed, however, the market is currently closed and only opens from " +
                             status_object.local_open +
                             " to " +
