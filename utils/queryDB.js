@@ -394,10 +394,14 @@ async function processShortPosition(newOrder, userId) {
     }
 }
 
-async function modifyCashBalance(newOrder, amount) {
+async function modifyCashBalance(newOrder, amount, instruction) {
     let user = await UserModel.findById(newOrder.user);
 
-    user.balance += amount;
+    if (instruction === "increase") {
+        user.balance += amount;
+    } else {
+        user.balance -= amount;
+    }
 
     await user.save();
 }
