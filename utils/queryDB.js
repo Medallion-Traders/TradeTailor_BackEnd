@@ -121,6 +121,9 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     position.profit = profit;
     position.positionStatus = "closed";
 
+    //Increase the cash balance by profit
+    modifyCashBalance(newOrder, profit, "increase");
+
     // Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
     await newOrder.save();
@@ -151,6 +154,9 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
     // Update the position fields
     position.quantity -= newOrder.fixedQuantity;
     position.profit += profit;
+
+    //Increase the cash balance by profit
+    modifyCashBalance(newOrder, profit, "increase");
 
     //Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
@@ -217,6 +223,9 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     position.profit = profit;
     position.positionStatus = "closed";
 
+    //Increase the cash balance by profit
+    modifyCashBalance(newOrder, profit, "increase");
+
     // Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
     await newOrder.save();
@@ -248,6 +257,9 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
     // Update the position fields
     position.quantity -= newOrder.fixedQuantity;
     position.profit += profit;
+
+    //Increase the cash balance by profit
+    modifyCashBalance(newOrder, profit, "increase");
 
     // Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
