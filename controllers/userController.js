@@ -137,8 +137,6 @@ export const resetBalance = async (req, res) => {
 
         //Delete the portfolio
         await PortfolioModel.findByIdAndDelete(portfolio._id);
-
-        //Delete all of the positions
     } catch (error) {
         res.status(500).json({ message: "An error occurred while resetting the user's balance" });
     }
