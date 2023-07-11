@@ -2,6 +2,9 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/Users.js";
+import PortfolioModel from "../models/Portfolio.js";
+import PositionModel from "../models/Position.js";
+import { Order } from "../models/Order.js";
 import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
 
@@ -114,4 +117,29 @@ export const getUserBalance = async (req, res) => {
     }
 };
 
-export const resetBalance = (req, res) => {};
+export const resetBalance = async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const user = await UserModel.findById(userId);
+        //Delete all existing positions, portfolio, and orders
+        //Reset user balance to default cash balance of 500k
+        user.balance = process.env.DEFAULT_CASH_BALANCE;
+
+        //Delete all of the users' orders
+        await Order.deleteMany({ user: userId });
+
+        //Find their portfolio and associated positions ids
+        const position_ids_array = await PortfolioModel.findOne({ user: userId }).positions;
+
+        position_ids_array.forEach(async (position_id) => {
+            PositionModel.findByIdAndDelete(position_id);
+        });
+
+        //Delete the portfolio
+        await PortfolioModel.findByIdAndDelete(portfolio._id);
+
+        //Delete all of the positions
+    } catch (error) {
+        res.status(500).json({ message: "An error occurred while resetting the user's balance" });
+    }
+};

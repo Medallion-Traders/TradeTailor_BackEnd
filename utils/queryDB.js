@@ -1,4 +1,5 @@
 import cron from "node-cron";
+import UserModel from "../models/Users.js";
 import PortfolioModel from "../models/Portfolio.js";
 import PositionModel from "../models/Position.js";
 import { Order } from "../models/Order.js";
@@ -80,6 +81,9 @@ const createPortfolio = handleErrors(async function createPortfolio(newOrder, us
     });
 
     await newPortfolio.save();
+
+    //Reduce the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 });
 
 const addToLongPosition = handleErrors(async function addToLongPosition(positionId, newOrder) {
@@ -92,6 +96,9 @@ const addToLongPosition = handleErrors(async function addToLongPosition(position
     position.openingOrders.push(newOrder._id);
     // Save the updated position
     await position.save();
+
+    //Reduce the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 });
 
 const closeShortPosition = handleErrors(async function closeShortPosition(positionId, newOrder) {
@@ -110,7 +117,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     await newOrder.save();
 
     // Add the new order to the closing orders
-    position.closingOrders.push(newOrder._id);
+    await position.closingOrders.push(newOrder._id);
 
     // Close all openingOrders, both closed and open
     const populatedPosition = await position.populate("openingOrders");
@@ -118,6 +125,9 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
 
     // Save the updated position
     await position.save();
+
+    //Increase the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 });
 
 const partialCloseShortPosition = handleErrors(async function partialCloseShortPosition(
@@ -146,9 +156,12 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
 
     // Save the updated position
     await position.save();
+
+    //Increase the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 });
 
-// Utility function for handling new short positions
+// Utility function for handling newly opened positions
 const createNewPosition = handleErrors(async function createNewPosition(newOrder, userId) {
     const newPosition = new PositionModel({
         symbol: newOrder.symbol,
@@ -166,6 +179,10 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
     if (!portfolio) throw new Error("Portfolio not found");
     portfolio.positions.push(newPosition._id);
     await portfolio.save();
+
+    //Regardless of the direction of the trade, reduce the cash balance
+    //For both longs and shorts, the cash balance is held hostage
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 });
 
 // Utility function for updating long position
@@ -192,6 +209,9 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
 
     // Save the updated position
     await position.save();
+
+    //Increase the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 });
 
 // Utility function for handling partial long position closure
@@ -222,6 +242,9 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
 
     // Save the updated position
     await position.save();
+
+    // Increase the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 });
 
 // Utility function for adding to short position
@@ -235,6 +258,9 @@ const addToShortPosition = handleErrors(async function addToShortPosition(positi
     position.openingOrders.push(newOrder._id);
     // Save the updated position
     await position.save();
+
+    // Decrease the cash balance
+    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 });
 
 async function processLongPosition(newOrder, userId) {
@@ -333,6 +359,14 @@ async function processShortPosition(newOrder, userId) {
     }
 }
 
+async function modifyCashBalance(newOrder, amount) {
+    let user = await UserModel.findById(newOrder.user);
+
+    user.balance += amount;
+
+    await user.save();
+}
+
 async function fillOrder(order) {
     const status_object = await getCurrentMarketStatus();
 
@@ -352,7 +386,6 @@ async function fillOrder(order) {
         } else if (order.orderType === "limit") {
             const price = await getCurrentPrice(order.symbol);
             if (price >= order.unitPrice) {
-                const price = await getCurrentPrice(order.symbol);
                 order.filledStatus = "filled";
                 order.marketStatus = "open";
                 order.unitPrice = price;
@@ -382,4 +415,4 @@ cron.schedule("*/5 10-16 * * 1-5", async () => {
 });
 
 // Exports
-export { processLongPosition, processShortPosition, fillOrder };
+export { fillOrder };
