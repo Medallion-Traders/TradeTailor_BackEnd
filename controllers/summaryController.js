@@ -1,5 +1,6 @@
 import { Order } from "../models/Order.js";
 import PortfolioModel from "../models/Portfolio.js";
+import TradeSummaryModel from "../models/TradeSummary.js";
 
 async function getPendingOrders(req, res) {
     try {
@@ -67,4 +68,86 @@ async function getClosedPositions(req, res) {
     }
 }
 
-export { getClosedPositions, getPendingOrders, getOpenPositions };
+async function getTodaysOpenPositions(userId) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const tradeSummary = await TradeSummaryModel.findOne({
+        user: userId,
+        date: {
+            $gte: today,
+            $lt: tomorrow,
+        },
+    });
+
+    return tradeSummary ? tradeSummary.number_of_open_positions : 0;
+}
+
+async function getThisMonthOpenPositions(userId) {
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const tradeSummaries = await TradeSummaryModel.find({
+        user: userId,
+        date: {
+            $gte: firstDayOfMonth,
+            $lt: firstDayOfNextMonth,
+        },
+    });
+
+    return tradeSummaries.reduce(
+        (sum, tradeSummary) => sum + tradeSummary.number_of_open_positions,
+        0
+    );
+}
+
+async function getTodaysClosedPositions(userId) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const tradeSummary = await TradeSummaryModel.findOne({
+        user: userId,
+        date: {
+            $gte: today,
+            $lt: tomorrow,
+        },
+    });
+
+    return tradeSummary ? tradeSummary.number_of_closed_positions : 0;
+}
+
+async function getThisMonthClosedPositions(userId) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toLocaleString("en-US", { minimumIntegerDigits: 2 });
+    const firstDayOfMonth = new Date(year, now.getMonth(), 1);
+    const firstDayOfNextMonth = new Date(year, now.getMonth() + 1, 1);
+
+    const tradeSummaries = await TradeSummaryModel.find({
+        user: userId,
+        date: {
+            $gte: firstDayOfMonth,
+            $lt: firstDayOfNextMonth,
+        },
+    });
+
+    return tradeSummaries.reduce(
+        (sum, tradeSummary) => sum + tradeSummary.number_of_closed_positions,
+        0
+    );
+}
+
+export {
+    getClosedPositions,
+    getPendingOrders,
+    getOpenPositions,
+    getTodaysOpenPositions,
+    getThisMonthOpenPositions,
+    getTodaysClosedPositions,
+    getThisMonthClosedPositions,
+};

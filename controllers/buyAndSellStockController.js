@@ -97,9 +97,9 @@ async function processOrder(newOrder, direction, res) {
                             newOrder.unitPrice +
                             " was processed, however, the market is currently closed and only opens from " +
                             status_object.local_open +
-                            "Eastern time to " +
+                            " Eastern time to " +
                             status_object.local_close +
-                            "Eastern Time. Your market order will be immediately filled when the market opens",
+                            " Eastern Time. Your market order will be immediately filled when the market opens",
                     });
                 }
             }

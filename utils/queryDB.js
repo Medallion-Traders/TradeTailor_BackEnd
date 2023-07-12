@@ -4,6 +4,7 @@ import PortfolioModel from "../models/Portfolio.js";
 import PositionModel from "../models/Position.js";
 import { Order } from "../models/Order.js";
 import { getCurrentPrice, getCurrentMarketStatus } from "./queryWebSocket.js";
+import TradeSummaryModel from "../models/TradeSummary.js";
 
 // Utility function for handling errors
 function handleErrors(fn) {
@@ -87,6 +88,9 @@ const createPortfolio = handleErrors(async function createPortfolio(newOrder, us
 
     //Reduce the cash balance
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
+
+    //Log the position status
+    logTradeSummary(newOrder, userId);
 });
 
 const addToLongPosition = handleErrors(async function addToLongPosition(positionId, newOrder) {
@@ -140,6 +144,9 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
 
     //Increase the cash balance
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
+
+    //Log the position status
+    logTradeSummary(newOrder, userId);
 });
 
 const partialCloseShortPosition = handleErrors(async function partialCloseShortPosition(
@@ -201,7 +208,9 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
 
     await newPosition.save();
 
-    const portfolio = await PortfolioModel.findOne({ user: userId });
+    const portfolio = await PortfolioModel.findOne({
+        user: userId,
+    });
     if (!portfolio) throw new Error("Portfolio not found");
     portfolio.positions.push(newPosition._id);
     await portfolio.save();
@@ -209,6 +218,9 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
     //Regardless of the direction of the trade, reduce the cash balance
     //For both longs and shorts, the cash balance is held hostage
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
+
+    //Log the position status
+    logTradeSummary(newOrder, userId);
 });
 
 // Utility function for updating long position
@@ -242,6 +254,9 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
 
     //Increase the cash balance
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
+
+    //Log the position status
+    logTradeSummary(newOrder, userId);
 });
 
 // Utility function for handling partial long position closure
@@ -454,6 +469,48 @@ async function fillOrder(order) {
         return { isFilled: true, status_object: status_object };
     } else {
         return { isFilled: false, status_object: status_object };
+    }
+}
+
+async function logTradeSummary(position, userId) {
+    // Strip the date from the position's updatedAt field
+    let updatedAt = new Date(position.updatedAt);
+
+    // Format the date in YYYY-MM-DD format
+    let formattedDate =
+        updatedAt.getFullYear() +
+        "-" +
+        (updatedAt.getMonth() + 1).toString().padStart(2, "0") +
+        "-" +
+        updatedAt
+            .getDate()
+            .toString()
+            .padStart(2, "0");
+
+    // Find the relevant TradeSummary document, if none, create it and add
+    let tradeSummary = await TradeSummaryModel.findOne({
+        user: userId,
+        date: new Date(formattedDate),
+    });
+
+    let isOpen = position.positionStatus === "open" ? true : false;
+
+    if (!tradeSummary) {
+        let tradeData = {
+            user: userId,
+            date: new Date(formattedDate),
+            number_of_open_positions: isOpen ? 1 : 0,
+            number_of_closed_positions: 0,
+        };
+        tradeSummary = await TradeSummaryModel.create(tradeData);
+    } else {
+        if (isOpen) {
+            tradeSummary.number_of_open_positions += 1;
+        } else {
+            tradeSummary.number_of_open_positions -= 1;
+            tradeSummary.number_of_closed_positions += 1;
+        }
+        await tradeSummary.save();
     }
 }
 
