@@ -36,8 +36,8 @@ const setupWebSocket = (server, secretKey) => {
 
         // Send different types of data over the same connection
         setInterval(() => {
-            socket.emit("newData1", getPortfolioValue());
-            socket.emit("newData2", getUnrealizedProfits());
+            socket.emit("getPortfolioValue", getPortfolioValue());
+            socket.emit("getUnrealizedProfits", getUnrealizedProfits());
         }, 1000);
     });
 };

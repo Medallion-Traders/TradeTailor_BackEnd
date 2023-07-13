@@ -32,11 +32,15 @@ async function getOpenPositions(req, res) {
             return;
         }
 
-        let populatedPositions = await PortfolioModel.populate(portfolio, {
-            path: "positions.openingOrders closingOrders",
+        portfolio = await PortfolioModel.populate(portfolio, {
+            path: "positions.openingOrders",
         });
 
-        res.status(200).json(populatedPositions.positions);
+        portfolio = await PortfolioModel.populate(portfolio, {
+            path: "positions.closingOrders",
+        });
+
+        res.status(200).json(portfolio.positions);
     } catch (err) {
         console.error(`Function getOpenPositions broke and raised ${err}`);
         res.status(500).json({ error: err.toString() });
@@ -57,11 +61,15 @@ async function getClosedPositions(req, res) {
             return;
         }
 
-        let populatedPositions = await PortfolioModel.populate(portfolio, {
-            path: "positions.openingOrders closingOrders",
+        portfolio = await PortfolioModel.populate(portfolio, {
+            path: "positions.openingOrders",
         });
 
-        res.status(200).json(populatedPositions.positions);
+        portfolio = await PortfolioModel.populate(portfolio, {
+            path: "positions.closingOrders",
+        });
+
+        res.status(200).json(portfolio.positions);
     } catch (err) {
         console.error(`Function getClosedPositions broke and raised ${err}`);
         res.status(500).json({ error: err.toString() });
