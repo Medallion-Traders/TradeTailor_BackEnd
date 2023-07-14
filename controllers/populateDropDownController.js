@@ -3,8 +3,21 @@ import dotenv from "dotenv";
 import csvtojson from "csvtojson";
 
 let companies = [];
+let lastUpdatedTime = null;
 
 dotenv.config();
+
+// Check if the data needs to be fetched
+function needsUpdate() {
+    if (!lastUpdatedTime || companies.length === 0) {
+        // If lastUpdatedTime is not set or the array is empty, update is needed
+        return true;
+    }
+    const currentTime = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+    const timeDifference = currentTime - lastUpdatedTime;
+    const oneDayInSeconds = 24 * 60 * 60;
+    return timeDifference >= oneDayInSeconds;
+}
 
 // Fetch companies' data from API
 async function fetchCompanies() {
@@ -14,6 +27,12 @@ async function fetchCompanies() {
         const response = await axios.get(
             `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
         );
+        if (!response.data) {
+            console.log(
+                "CSV file is empty, likely query limit of alphavantage api exceeded 5 requests per minute"
+            );
+            return;
+        }
         const jsonArray = await csvtojson().fromString(response.data);
 
         for (let object of jsonArray) {
@@ -25,15 +44,17 @@ async function fetchCompanies() {
                 count++;
             }
         }
+        lastUpdatedTime = Math.floor(Date.now() / 1000); // Update lastUpdatedTime
     } catch (err) {
         console.error("Error fetching companies' data:", err);
-        throw err;
     }
 }
 
 // Companies endpoint
 async function populateDropDownFunction(req, res) {
-    await fetchCompanies();
+    if (needsUpdate()) {
+        await fetchCompanies();
+    }
     res.status(200).json(companies);
 }
 
