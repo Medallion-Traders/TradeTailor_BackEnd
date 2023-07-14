@@ -5,6 +5,13 @@ import PositionModel from "../models/Position.js";
 import { Order } from "../models/Order.js";
 import { getCurrentPrice, getCurrentMarketStatus } from "./queryWebSocket.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
+import {
+    getTodaysOpenPositions,
+    getThisMonthOpenPositions,
+    getTodaysClosedPositions,
+    getThisMonthClosedPositions,
+} from "../controllers/summaryController.js";
+import { emitUpdate } from "./socket.js";
 
 // Utility function for handling errors
 function handleErrors(fn) {
@@ -496,19 +503,33 @@ async function logTradeSummary(position, userId) {
     let isOpen = position.positionStatus === "open" ? true : false;
 
     if (!tradeSummary) {
-        let tradeData = {
-            user: userId,
-            date: new Date(formattedDate),
-            number_of_open_positions: isOpen ? 1 : 0,
-            number_of_closed_positions: 0,
-        };
-        tradeSummary = await TradeSummaryModel.create(tradeData);
+        if (isOpen) {
+            let tradeData = {
+                user: userId,
+                date: new Date(formattedDate),
+                number_of_open_positions: 1,
+                number_of_closed_positions: 0,
+            };
+
+            tradeSummary = await TradeSummaryModel.create(tradeData);
+
+            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
+            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
+        }
     } else {
         if (isOpen) {
             tradeSummary.number_of_open_positions += 1;
+
+            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
+            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
         } else {
             tradeSummary.number_of_open_positions -= 1;
             tradeSummary.number_of_closed_positions += 1;
+
+            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
+            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
+            await emitUpdate("getTodaysClosePositions", getTodaysClosedPositions(userId));
+            await emitUpdate("getThisMonthClosePositions", getThisMonthClosedPositions(userId));
         }
         await tradeSummary.save();
     }
@@ -525,4 +546,4 @@ cron.schedule("*/5 10-16 * * 1-5", async () => {
 });
 
 // Exports
-export { fillOrder };
+export { fillOrder, logTradeSummary };

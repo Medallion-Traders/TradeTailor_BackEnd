@@ -12,7 +12,7 @@ import users from "./routes/users.js";
 import webSocketRouter from "./routes/webSocket.js";
 import summary from "./routes/summary.js";
 import { createServer } from "http";
-import setupWebSocket from "./utils/socket.js";
+import { setupWebSocket } from "./utils/socket.js";
 
 dotenv.config();
 
@@ -68,7 +68,7 @@ async function start() {
     await connectDatabase();
 
     const server = createServer(app);
-    setupWebSocket(server, process.env.JWT_SECRET);
+    await setupWebSocket(server, process.env.JWT_SECRET);
 
     server.listen(process.env.PORT || 3001, () =>
         console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)

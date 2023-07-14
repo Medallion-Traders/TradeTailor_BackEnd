@@ -1,6 +1,7 @@
 import { Order } from "../models/Order.js";
 import PortfolioModel from "../models/Portfolio.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
+import { getCurrentPrice } from "../utils/queryWebSocket.js";
 
 async function getPendingOrders(req, res) {
     try {
@@ -8,7 +9,6 @@ async function getPendingOrders(req, res) {
 
         const orders = await Order.find({
             user: userId,
-            orderType: "limit",
             filledStatus: "pending",
         });
         res.status(200).json(orders);
@@ -150,6 +150,65 @@ async function getThisMonthClosedPositions(userId) {
     );
 }
 
+async function getRealisedProfits(userId) {
+    let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
+        path: "positions",
+    });
+    if (!portfolio) {
+        console.log(`No portfolio found for user ${userId}`);
+        return 0;
+    }
+
+    return portfolio.positions.reduce((sum, position) => sum + position.profit, 0);
+}
+
+async function getUnrealisedProfits(userId) {
+    let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
+        path: "positions",
+        match: { positionStatus: "open" },
+    });
+    if (!portfolio) {
+        console.log(`No portfolio found for user ${userId}`);
+        return 0;
+    }
+
+    let totalUnrealisedProfits = 0;
+    for (position of portfolio.positions) {
+        const current_price = await getCurrentPrice(position.symbol);
+        if (position.positionType === "long") {
+            totalUnrealisedProfits += current_price - position.averagePrice * position.quantity;
+        } else {
+            totalUnrealisedProfits += position.averagePrice * position.quantity - current_price;
+        }
+    }
+    return totalUnrealisedProfits;
+}
+
+async function getPortfolioValue(userId) {
+    let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
+        path: "positions",
+        match: { positionStatus: "open" },
+    });
+    if (!portfolio) {
+        console.log(`No portfolio found for user ${userId}`);
+        return 0;
+    }
+
+    let totalValue = 0;
+    for (position of portfolio.positions) {
+        const current_price = await getCurrentPrice(position.symbol);
+        if (position.positionType === "long") {
+            totalValue += current_price * position.quantity;
+        } else {
+            const profit = position.averagePrice * position.quantity - current_price;
+            //Profit/Loss of short position is deducted from total value
+            //The value of the short position does not exist in real terms as it on margin
+            totalValue += profit;
+        }
+    }
+    return totalValue;
+}
+
 export {
     getClosedPositions,
     getPendingOrders,
@@ -158,4 +217,7 @@ export {
     getThisMonthOpenPositions,
     getTodaysClosedPositions,
     getThisMonthClosedPositions,
+    getRealisedProfits,
+    getUnrealisedProfits,
+    getPortfolioValue,
 };

@@ -2,10 +2,16 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-// project imports
-import { getPortfolioValue, getUnrealizedProfits } from "../controllers/realTimeDataController.js";
+let io; // Store the io instance globally
 
-const setupWebSocket = (server, secretKey) => {
+// This function can be used to emit an event to the client from any part of your code
+async function emitUpdate(event, data) {
+    if (io) {
+        io.emit(event, data);
+    }
+}
+
+async function setupWebSocket(server, secretKey) {
     dotenv.config();
     const io = new Server(server, {
         cors: {
@@ -33,13 +39,7 @@ const setupWebSocket = (server, secretKey) => {
         socket.on("disconnect", () => {
             console.log("Client disconnected");
         });
-
-        // Send different types of data over the same connection
-        setInterval(() => {
-            socket.emit("getPortfolioValue", getPortfolioValue());
-            socket.emit("getUnrealizedProfits", getUnrealizedProfits());
-        }, 1000);
     });
-};
+}
 
-export default setupWebSocket;
+export { setupWebSocket, emitUpdate };
