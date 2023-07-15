@@ -1,22 +1,16 @@
 import mongoose from "mongoose";
 
-const portfolioSchema = mongoose.Schema(
+const PortfolioSchema = mongoose.Schema(
     {
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "UserModel",
             required: true,
         },
-        stocks: [
+        positions: [
             {
-                company: {
-                    type: String,
-                    required: true,
-                },
-                quantity: {
-                    type: Number,
-                    required: true,
-                },
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "PositionModel",
             },
         ],
     },
@@ -25,6 +19,6 @@ const portfolioSchema = mongoose.Schema(
     }
 );
 
-const PortfolioModel = mongoose.model("Portfolio", portfolioSchema);
+const PortfolioModel = mongoose.model("PortfolioModel", PortfolioSchema, "portfoliomodels");
 
 export default PortfolioModel;

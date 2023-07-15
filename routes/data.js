@@ -5,6 +5,6 @@ import populateDropDownFunction from "../controllers/populateDropDownController.
 const stockdata = express.Router();
 
 stockdata.get("/companies", populateDropDownFunction);
-stockdata.get("/stock-price/:companyId", autoFillFunction);
+stockdata.get("/stock-price/:symbol", autoFillFunction);
 
 export default stockdata;

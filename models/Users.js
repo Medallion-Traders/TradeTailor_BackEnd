@@ -1,4 +1,7 @@
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const userSchema = mongoose.Schema({
     email: {
@@ -26,7 +29,7 @@ const userSchema = mongoose.Schema({
     },
     balance: {
         type: Number,
-        default: 500000, // default balance is set to 500,000
+        default: process.env.DEFAULT_CASH_BALANCE,
     },
     username: {
         type: String,
@@ -35,6 +38,6 @@ const userSchema = mongoose.Schema({
     },
 });
 
-const UserModel = mongoose.model("users", userSchema);
+const UserModel = mongoose.model("users", userSchema, "users");
 
 export default UserModel;

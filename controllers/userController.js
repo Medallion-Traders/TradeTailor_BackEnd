@@ -2,8 +2,12 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/Users.js";
+import PortfolioModel from "../models/Portfolio.js";
+import PositionModel from "../models/Position.js";
+import { Order } from "../models/Order.js";
 import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
+import TradeSummaryModel from "../models/TradeSummary.js";
 
 dotenv.config();
 
@@ -108,8 +112,36 @@ export const getUserBalance = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.status(200).json({ balance: user.balance });
+        res.status(200).json({ balance: Math.round(user.balance * 100) / 100 });
     } catch (error) {
         res.status(500).json({ message: "An error occurred while fetching the user's balance" });
+    }
+};
+
+export const resetBalance = async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const user = await UserModel.findById(userId);
+        //Delete all existing positions, portfolio, and orders
+        //Reset user balance to default cash balance of 500k
+        user.balance = process.env.DEFAULT_CASH_BALANCE;
+
+        //Delete all of the users' orders
+        await Order.deleteMany({ user: userId });
+
+        //Find their portfolio and associated positions ids
+        const position_ids_array = await PortfolioModel.findOne({ user: userId }).positions;
+
+        position_ids_array.forEach(async (position_id) => {
+            PositionModel.findByIdAndDelete(position_id);
+        });
+
+        //Delete the trade summary
+        TradeSummaryModel.deleteMany({ user: userId });
+
+        //Delete the portfolio
+        await PortfolioModel.findByIdAndDelete(portfolio._id);
+    } catch (error) {
+        res.status(500).json({ message: "An error occurred while resetting the user's balance" });
     }
 };
