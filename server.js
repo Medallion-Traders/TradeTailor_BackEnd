@@ -41,11 +41,11 @@ function setupMiddleware(app) {
 // This function sets up all the routes for the app
 function setupRoutes(app) {
     app.use("/auth", users);
-    app.use("/data", stockdata);
-    app.use("/transactions", transactions);
+    app.use("/data", verifyToken, stockdata);
+    app.use("/transactions", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
-    app.use("/webSocket", webSocketRouter);
-    app.use("/summary", summary);
+    app.use("/webSocket", verifyToken, webSocketRouter);
+    app.use("/summary", verifyToken, summary);
 }
 
 async function connectDatabase() {
