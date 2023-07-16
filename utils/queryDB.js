@@ -5,13 +5,18 @@ import PositionModel from "../models/Position.js";
 import { Order } from "../models/Order.js";
 import { getCurrentPrice, getCurrentMarketStatus } from "./queryWebSocket.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
+import DailyProfitModel from "../models/Profit.js";
 import {
     getTodaysOpenPositions,
     getThisMonthOpenPositions,
     getTodaysClosedPositions,
     getThisMonthClosedPositions,
+    getRealisedProfits,
 } from "../controllers/summaryController.js";
-import { emitUpdate } from "./socket.js";
+import moment from "moment-timezone";
+
+let marketOpenTime;
+let marketCloseTime;
 
 // Utility function for handling errors
 function handleErrors(fn) {
@@ -126,9 +131,9 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     // Calculate the profit
     const profit = position.quantity * (position.averagePrice - newOrder.unitPrice);
     // Update the position fields
-    position.quantity = 0;
-    position.averagePrice = 0;
-    position.totalAmount = 0;
+    // position.quantity = 0;
+    // position.averagePrice = 0;
+    // position.totalAmount = 0;
     position.profit = profit;
     position.positionStatus = "closed";
 
@@ -183,11 +188,10 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
     let orders = await position.populate("openingOrders").openingOrders;
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-    //Calculate new Average price and new total amount
-    let total_amount;
-    orders.forEach((order) => {
-        total_amount += order.currentQuantity * order.unitPrice;
-    });
+    //Calculate new average price and new total amount
+    const total_amount = orders
+        .filter((order) => order.marketStatus === "open")
+        .reduce((total_amount, order) => total_amount + order.currentQuantity * order.unitPrice, 0);
 
     position.totalAmount = total_amount;
 
@@ -236,9 +240,9 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     // Calculate the profit
     const profit = position.quantity * (newOrder.unitPrice - position.averagePrice);
     // Update the position fields
-    position.quantity = 0;
-    position.averagePrice = 0;
-    position.totalAmount = 0;
+    // position.quantity = 0;
+    // position.averagePrice = 0;
+    // position.totalAmount = 0;
     position.profit = profit;
     position.positionStatus = "closed";
 
@@ -295,11 +299,10 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     await handlePartialClosure(orders, newOrder.fixedQuantity);
 
-    //Calculate new Average price and new total amount
-    let total_amount;
-    orders.forEach((order) => {
-        total_amount += order.currentQuantity * order.unitPrice;
-    });
+    //Calculate new average price and new total amount
+    const total_amount = orders
+        .filter((order) => order.marketStatus === "open")
+        .reduce((total_amount, order) => total_amount + order.currentQuantity * order.unitPrice, 0);
 
     position.totalAmount = total_amount;
 
@@ -337,7 +340,9 @@ async function processLongPosition(newOrder, userId) {
 
     // If no portfolio, create new portfolio
     if (!portfolio) {
-        createPortfolio(newOrder, userId);
+        await createPortfolio(newOrder, userId);
+        getTodaysOpenPositions(userId);
+        getThisMonthOpenPositions(newOrder);
         return;
     }
 
@@ -346,7 +351,7 @@ async function processLongPosition(newOrder, userId) {
         portfolio.positions.map((positionId) => fetchPosition(positionId))
     );
 
-    const position = fetchPositions.find(
+    const position = await fetchPositions.find(
         (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
     );
 
@@ -355,7 +360,6 @@ async function processLongPosition(newOrder, userId) {
     // If the position exists in the portfolio, find it
     if (positionId) {
         let position = await fetchPosition(positionId);
-        console.log(position);
 
         // If the position is happens to be a long, add to the long position
         if (position.positionType === "long") {
@@ -365,10 +369,21 @@ async function processLongPosition(newOrder, userId) {
         else {
             if (position.quantity > newOrder.fixedQuantity) {
                 await partialCloseShortPosition(position._id, newOrder);
+                getRealisedProfits(userId);
             } else if (position.quantity === newOrder.fixedQuantity) {
                 await closeShortPosition(position._id, newOrder);
+                getRealisedProfits(userId);
+                getTodaysOpenPositions(userId);
+                getTodaysClosedPositions(userId);
+                getThisMonthOpenPositions(userId);
+                getThisMonthClosedPositions(userId);
             } else {
                 await closeShortPosition(position._id, newOrder);
+                getRealisedProfits(userId);
+                getTodaysOpenPositions(userId);
+                getTodaysClosedPositions(userId);
+                getThisMonthOpenPositions(userId);
+                getThisMonthClosedPositions(userId);
                 const remainderOrder = { ...newOrder };
                 remainderOrder.fixedQuantity -= position.quantity;
                 await createNewPosition(remainderOrder, userId);
@@ -378,6 +393,8 @@ async function processLongPosition(newOrder, userId) {
     // If the position does not exist, create a new one
     else {
         await createNewPosition(newOrder, userId);
+        getTodaysOpenPositions(userId);
+        getThisMonthOpenPositions(userId);
     }
 }
 
@@ -385,7 +402,9 @@ async function processShortPosition(newOrder, userId) {
     let portfolio = await PortfolioModel.findOne({ user: userId }).populate("positions");
 
     if (!portfolio) {
-        createPortfolio(newOrder, userId);
+        await createPortfolio(newOrder, userId);
+        getTodaysOpenPositions(userId);
+        getThisMonthOpenPositions(newOrder);
         return;
     }
 
@@ -394,7 +413,7 @@ async function processShortPosition(newOrder, userId) {
         portfolio.positions.map((positionId) => fetchPosition(positionId))
     );
 
-    const position = fetchPositions.find(
+    const position = await fetchPositions.find(
         (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
     );
 
@@ -412,10 +431,21 @@ async function processShortPosition(newOrder, userId) {
         else {
             if (position.quantity > newOrder.fixedQuantity) {
                 await partialCloseLongPosition(position._id, newOrder);
+                getRealisedProfits(userId);
             } else if (position.quantity === newOrder.fixedQuantity) {
                 await closeLongPosition(position._id, newOrder);
+                getRealisedProfits(userId);
+                getTodaysOpenPositions(userId);
+                getTodaysClosedPositions(userId);
+                getThisMonthOpenPositions(userId);
+                getThisMonthClosedPositions(userId);
             } else {
                 await closeLongPosition(position._id, newOrder);
+                getRealisedProfits(userId);
+                getTodaysOpenPositions(userId);
+                getTodaysClosedPositions(userId);
+                getThisMonthOpenPositions(userId);
+                getThisMonthClosedPositions(userId);
                 const remainderOrder = { ...newOrder };
                 remainderOrder.fixedQuantity -= position.quantity;
                 await createNewPosition(remainderOrder, userId);
@@ -425,6 +455,8 @@ async function processShortPosition(newOrder, userId) {
     // If the position does not exist, create a new one
     else {
         await createNewPosition(newOrder, userId);
+        getTodaysOpenPositions(userId);
+        getThisMonthOpenPositions(userId);
     }
 }
 
@@ -513,37 +545,133 @@ async function logTradeSummary(position, userId) {
 
             tradeSummary = await TradeSummaryModel.create(tradeData);
 
-            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
-            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
         }
     } else {
         if (isOpen) {
             tradeSummary.number_of_open_positions += 1;
 
-            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
-            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
         } else {
             tradeSummary.number_of_open_positions -= 1;
             tradeSummary.number_of_closed_positions += 1;
 
-            await emitUpdate("getTodaysOpenPositions", getTodaysOpenPositions(userId));
-            await emitUpdate("getThisMonthOpenPositions", getThisMonthOpenPositions(userId));
-            await emitUpdate("getTodaysClosePositions", getTodaysClosedPositions(userId));
-            await emitUpdate("getThisMonthClosePositions", getThisMonthClosedPositions(userId));
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
+            getTodaysClosedPositions(userId);
+            getThisMonthClosedPositions(userId);
         }
         await tradeSummary.save();
     }
 }
 
-cron.schedule("*/5 10-16 * * 1-5", async () => {
-    const orders = await Order.find({ filledStatus: "pending" });
+// Function to convert time string to a moment object
+const convertTime = (time, date) => {
+    const [hour, minute] = time.split(":").map(Number);
+    return moment.unix(date).set({ hour: hour, minute: minute });
+};
 
-    // Create an array of promises
-    const promises = orders.map(fillOrder);
+// Function to check if the current time is between market open and close times
+const isMarketOpen = () => {
+    const currentTime = moment().unix();
+    return currentTime.isBetween(marketOpenTime, marketCloseTime);
+};
 
-    // Wait for all promises to resolve
-    await Promise.all(promises);
-});
+(async function() {
+    // Initial fetching of market status
+    if (!marketOpenTime || !marketCloseTime) {
+        const marketStatus = await getCurrentMarketStatus();
+        const dateToday = moment().unix();
+        marketOpenTime = convertTime(marketStatus.local_open, dateToday);
+        marketCloseTime = convertTime(marketStatus.local_close, dateToday);
+    }
+})();
+
+// Cron job to fetch market status for the day at 6.02 AM Singapore time
+cron.schedule(
+    "2 6 * * *",
+    async () => {
+        const marketStatus = await getCurrentMarketStatus();
+
+        // Assume the local_open and local_close are in the format 'HH:mm' in Eastern Time
+        const dateToday = moment().unix();
+        marketOpenTime = convertTime(marketStatus.local_open, dateToday);
+        marketCloseTime = convertTime(marketStatus.local_close, dateToday);
+    },
+    {
+        timezone: "Asia/Singapore",
+    }
+);
+
+// Cron job to check market status every 5 seconds
+cron.schedule(
+    "*/5 * * * * *",
+    async () => {
+        if (!isMarketOpen()) {
+            return;
+        }
+
+        const orders = await Order.find({ filledStatus: "pending" });
+
+        // Create an array of promises
+        const promises = orders.map(fillOrder);
+
+        // Wait for all promises to resolve
+        await Promise.all(promises);
+    },
+    {
+        timezone: "Asia/Singapore",
+    }
+);
+
+// Cron job to snapshot the day's total profits at 6.05 Singapore time
+// The date is logged at the end of the trading day
+cron.schedule(
+    "5 6 * * *",
+    async () => {
+        const dateToday = new Date().toISOString().split("T")[0]; // Get the date part in YYYY-MM-DD format
+
+        try {
+            // Iterate through all UserModel documents
+            const users = await UserModel.find({});
+
+            for (const user of users) {
+                let totalProfits;
+                // Get the total profits for the day
+                let portfolio = await PortfolioModel.findOne({ user: user._id }).populate({
+                    path: "positions",
+                });
+
+                if (!portfolio) {
+                    console.log(`No portfolio found for user ${user.username}`);
+                    totalProfits = 0;
+                } else {
+                    totalProfits = portfolio.positions.reduce(
+                        (sum, position) => sum + position.profit,
+                        0
+                    );
+                }
+
+                // Create a new DailyProfit document
+                const dailyProfit = new DailyProfitModel({
+                    user: user._id,
+                    date: dateToday,
+                    total_profit: totalProfits,
+                });
+
+                // Save the document
+                await dailyProfit.save();
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    },
+    {
+        timezone: "Asia/Singapore",
+    }
+);
 
 // Exports
-export { fillOrder, logTradeSummary };
+export { fillOrder };

@@ -2,6 +2,7 @@ import { Order } from "../models/Order.js";
 import PortfolioModel from "../models/Portfolio.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import { getCurrentPrice } from "../utils/queryWebSocket.js";
+import { emitUpdate } from "../utils/socket.js";
 
 async function getPendingOrders(req, res) {
     try {
@@ -76,6 +77,10 @@ async function getClosedPositions(req, res) {
     }
 }
 
+//-------------------------START OF WEBSOCKET FUNCTIONS----------------------------//
+
+//------------------------START OF SELECTIVE EMIT FUNCTIONS------------------------//
+
 async function getTodaysOpenPositions(userId) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -90,7 +95,11 @@ async function getTodaysOpenPositions(userId) {
         },
     });
 
-    return tradeSummary ? tradeSummary.number_of_open_positions : 0;
+    emitUpdate(
+        "getTodaysOpenPositions",
+        tradeSummary ? tradeSummary.number_of_open_positions : 0,
+        userId
+    );
 }
 
 async function getThisMonthOpenPositions(userId) {
@@ -106,9 +115,13 @@ async function getThisMonthOpenPositions(userId) {
         },
     });
 
-    return tradeSummaries.reduce(
-        (sum, tradeSummary) => sum + tradeSummary.number_of_open_positions,
-        0
+    emitUpdate(
+        "getThisMonthOpenPositions",
+        tradeSummaries.reduce(
+            (sum, tradeSummary) => sum + tradeSummary.number_of_open_positions,
+            0
+        ),
+        userId
     );
 }
 
@@ -126,7 +139,11 @@ async function getTodaysClosedPositions(userId) {
         },
     });
 
-    return tradeSummary ? tradeSummary.number_of_closed_positions : 0;
+    emitUpdate(
+        "getTodaysClosedPositions",
+        tradeSummary ? tradeSummary.number_of_closed_positions : 0,
+        userId
+    );
 }
 
 async function getThisMonthClosedPositions(userId) {
@@ -144,9 +161,13 @@ async function getThisMonthClosedPositions(userId) {
         },
     });
 
-    return tradeSummaries.reduce(
-        (sum, tradeSummary) => sum + tradeSummary.number_of_closed_positions,
-        0
+    emitUpdate(
+        "getThisMonthClosedPositions",
+        tradeSummaries.reduce(
+            (sum, tradeSummary) => sum + tradeSummary.number_of_closed_positions,
+            0
+        ),
+        userId
     );
 }
 
@@ -159,8 +180,14 @@ async function getRealisedProfits(userId) {
         return 0;
     }
 
-    return portfolio.positions.reduce((sum, position) => sum + position.profit, 0);
+    emitUpdate(
+        "getRealisedProfits",
+        portfolio.positions.reduce((sum, position) => sum + position.profit, 0),
+        userId
+    );
 }
+
+//------------------------START OF CONSTANT EMIT FUNCTIONS------------------------//
 
 async function getUnrealisedProfits(userId) {
     let portfolio = await PortfolioModel.findOne({ user: userId }).populate({

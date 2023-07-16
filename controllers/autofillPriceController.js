@@ -5,7 +5,7 @@ import { getCurrentPrice } from "../utils/queryWebSocket.js";
 dotenv.config();
 
 // Stock price endpoint
-export const autoFillFunction = async (req, res) => {
+async function autoFillFunction(req, res) {
     try {
         const { symbol } = req.params;
 
@@ -31,6 +31,6 @@ export const autoFillFunction = async (req, res) => {
         console.error("Error fetching stock price:", error);
         return res.status(500).json({ error: "Failed to fetch stock price" });
     }
-};
+}
 
 export default autoFillFunction;
