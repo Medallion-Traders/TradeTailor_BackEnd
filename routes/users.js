@@ -4,6 +4,8 @@ import {
     loginUser,
     verifyEmail,
     getUserBalance,
+    getUserInfo,
+    updateUserSummary,
 } from "../controllers/userController.js";
 import verifyToken from "../middleware/auth.js";
 
@@ -13,5 +15,7 @@ users.post("/register", registerUser);
 users.post("/login", loginUser);
 users.get("/verify-email", verifyEmail);
 users.get("/balance", verifyToken, getUserBalance);
+users.get("/info", verifyToken, getUserInfo);
+users.put("/update", verifyToken, updateUserSummary);
 
 export default users;

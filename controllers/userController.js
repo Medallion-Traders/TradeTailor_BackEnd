@@ -13,7 +13,6 @@ dotenv.config();
 
 export const registerUser = async (req, res) => {
     try {
-        console.log("Hello");
         const { email, password, username } = req.body;
         const isValidEmail = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
 
@@ -21,10 +20,16 @@ export const registerUser = async (req, res) => {
             return res.status(400).json({ message: email + " is not a valid email" });
         }
 
-        let user = await UserModel.findOne({ email });
-
+        // Check if email is already taken
+        let user = await UserModel.findOne({ email, username });
         if (user) {
             return res.status(400).json({ message: "User already exists" });
+        }
+
+        // Check if username is already taken
+        user = await UserModel.findOne({ username });
+        if (user) {
+            return res.status(400).json({ message: "Username already taken" });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -143,5 +148,44 @@ export const resetBalance = async (req, res) => {
         await PortfolioModel.findByIdAndDelete(portfolio._id);
     } catch (error) {
         res.status(500).json({ message: "An error occurred while resetting the user's balance" });
+    }
+};
+
+export const getUserInfo = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const user = await UserModel.findById(userId).select("username email about");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        return res.status(200).json(user);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateUserSummary = async (req, res) => {
+    const userId = req.user.id;
+    const { about } = req.body;
+
+    try {
+        const user = await UserModel.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (about) {
+            user.about = about;
+        }
+
+        await user.save();
+
+        return res.status(200).json(user);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: error.message });
     }
 };
