@@ -13,6 +13,7 @@ import webSocketRouter from "./routes/webSocket.js";
 import summary from "./routes/summary.js";
 import { createServer } from "http";
 import { setupWebSocket } from "./utils/socket.js";
+import charts from "./routes/charts.js";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ function setupRoutes(app) {
     app.get("/", (req, res) => res.send("Server deployed successfully"));
     app.use("/webSocket", verifyToken, webSocketRouter);
     app.use("/summary", verifyToken, summary);
+    app.use("/charts", verifyToken, charts);
 }
 
 async function connectDatabase() {
