@@ -2,7 +2,7 @@ import { Order } from "../models/Order.js";
 import PortfolioModel from "../models/Portfolio.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import { getCurrentPrice } from "../utils/queryWebSocket.js";
-import { emitUpdate } from "./socket.js";
+import { emitUpdate } from "../utils/socket.js";
 
 async function getPendingOrders(req, res) {
     try {

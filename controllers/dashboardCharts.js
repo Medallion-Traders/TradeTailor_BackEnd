@@ -1,4 +1,7 @@
-import PortfolioModel from "../models/Portfolio";
+import PortfolioModel from "../models/Portfolio.js";
+import DailyProfitModel from "../models/Profit.js";
+import moment from "moment";
+
 async function getStockPercentages(req, res) {
     try {
         const user_id = req.user.id;
@@ -32,4 +35,43 @@ async function getStockPercentages(req, res) {
     }
 }
 
-export { getStockPercentages };
+async function getProfitLoss(req, res) {
+    try {
+        const userId = req.user.id;
+
+        // Subtract 30 days from the current date to get the start date for our query
+        const startDate = moment()
+            .subtract(30, "days")
+            .toDate()
+            .toISOString()
+            .split("T")[0];
+
+        // Query the database for all profit records for the user in the last 30 days, sorted by date
+        const profits = await DailyProfitModel.find({
+            user: userId,
+            date: { $gte: startDate },
+        }).sort("date");
+
+        // Initialize an empty array to hold our profit/loss data
+        const profitLossData = [];
+
+        // Iterate through each profit record
+        for (let i = 0; i < profits.length - 1; i++) {
+            // Calculate the difference in profit between the current day and the previous day
+            const profitDiff = profits[i + 1].profit - profits[i].profit;
+
+            // Add the profit difference and the date to our profit/loss data array
+            profitLossData.push({
+                x: profits[i + 1].date.toISOString().split("T")[0],
+                y: profitDiff,
+            });
+        }
+
+        // Return the profit/loss data
+        return res.status(200).json(profitLossData);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+export { getStockPercentages, getProfitLoss };

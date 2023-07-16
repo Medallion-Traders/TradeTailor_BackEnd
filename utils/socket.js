@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { getPortfolioValue, getUnrealisedProfits } from "../controllers/summaryController";
+import { getPortfolioValue, getUnrealisedProfits } from "../controllers/summaryController.js";
 
 let io; // Store the io instance globally
 
