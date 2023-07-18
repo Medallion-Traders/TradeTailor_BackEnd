@@ -20,7 +20,7 @@ let marketCloseTime;
 
 // Utility function for handling errors
 function handleErrors(fn) {
-    return function(...args) {
+    return function (...args) {
         return fn(...args).catch((err) => {
             console.error(`Function ${fn.name} broke and raised ${err}`);
         });
@@ -521,10 +521,7 @@ async function logTradeSummary(position, userId) {
         "-" +
         (updatedAt.getMonth() + 1).toString().padStart(2, "0") +
         "-" +
-        updatedAt
-            .getDate()
-            .toString()
-            .padStart(2, "0");
+        updatedAt.getDate().toString().padStart(2, "0");
 
     // Find the relevant TradeSummary document, if none, create it and add
     let tradeSummary = await TradeSummaryModel.findOne({
@@ -576,10 +573,11 @@ const convertTime = (time, date) => {
 // Function to check if the current time is between market open and close times
 const isMarketOpen = () => {
     const currentTime = moment().unix();
+    console.log("Current time: ", currentTime);
     return currentTime.isBetween(marketOpenTime, marketCloseTime);
 };
 
-(async function() {
+(async function () {
     // Initial fetching of market status
     if (!marketOpenTime || !marketCloseTime) {
         const marketStatus = await getCurrentMarketStatus();
@@ -674,4 +672,4 @@ cron.schedule(
 );
 
 // Exports
-export { fillOrder };
+export { fillOrder, isMarketOpen };
