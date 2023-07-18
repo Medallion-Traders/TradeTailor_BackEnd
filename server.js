@@ -9,7 +9,6 @@ import verifyToken from "./middleware/auth.js";
 import stockdata from "./routes/data.js";
 import transactions from "./routes/transactions.js";
 import users from "./routes/users.js";
-import webSocketRouter from "./routes/webSocket.js";
 import summary from "./routes/summary.js";
 import { createServer } from "http";
 import { setupWebSocket } from "./utils/socket.js";
@@ -45,7 +44,6 @@ function setupRoutes(app) {
     app.use("/data", verifyToken, stockdata);
     app.use("/transactions", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
-    app.use("/webSocket", verifyToken, webSocketRouter);
     app.use("/summary", verifyToken, summary);
     app.use("/charts", verifyToken, charts);
 }

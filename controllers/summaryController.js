@@ -26,24 +26,18 @@ async function getOpenPositions(req, res) {
         let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
             path: "positions",
             match: { positionStatus: "open" },
+            populate: [{ path: "openingOrders" }, { path: "closingOrders" }],
         });
+
         if (!portfolio) {
             console.log(`No portfolio found for user ${userId}`);
             res.status(200).json([]);
             return;
         }
 
-        portfolio = await PortfolioModel.populate(portfolio, {
-            path: "positions.openingOrders",
-        });
-
-        portfolio = await PortfolioModel.populate(portfolio, {
-            path: "positions.closingOrders",
-        });
-
         res.status(200).json(portfolio.positions);
     } catch (err) {
-        console.error(`Function getOpenPositions broke and raised ${err}`);
+        console.error(`Function getClosedPositions broke and raised ${err}`);
         res.status(500).json({ error: err.toString() });
     }
 }
@@ -55,20 +49,14 @@ async function getClosedPositions(req, res) {
         let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
             path: "positions",
             match: { positionStatus: "closed" },
+            populate: [{ path: "openingOrders" }, { path: "closingOrders" }],
         });
+
         if (!portfolio) {
             console.log(`No portfolio found for user ${userId}`);
             res.status(200).json([]);
             return;
         }
-
-        portfolio = await PortfolioModel.populate(portfolio, {
-            path: "positions.openingOrders",
-        });
-
-        portfolio = await PortfolioModel.populate(portfolio, {
-            path: "positions.closingOrders",
-        });
 
         res.status(200).json(portfolio.positions);
     } catch (err) {

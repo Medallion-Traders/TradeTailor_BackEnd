@@ -39,8 +39,8 @@ describe("autoFillFunction", () => {
         expect(res.json).toHaveBeenCalledWith({ price: expectedPrice });
     });
 
-    it("should handle failure when unable to fetch stock price", async () => {
-        jest.spyOn(queryWebSocket, "getCurrentPrice").mockResolvedValue(null);
+    it("should handle failure when unable to fetch stock price from Alphavantage axios call and getCurrentPrice is undefined", async () => {
+        jest.spyOn(queryWebSocket, "getCurrentPrice").mockResolvedValue(undefined);
         axiosMock.onGet().reply(500);
 
         await autoFillFunction(req, res);
@@ -49,7 +49,7 @@ describe("autoFillFunction", () => {
         expect(res.json).toHaveBeenCalledWith({ error: "Failed to fetch stock price" });
     });
 
-    it("should not make axios call if getCurrentPrice resolves successfully", async () => {
+    it("should not make Alphavantage axios call if getCurrentPrice return non-undefined price or non-error", async () => {
         const expectedPrice = "500.00";
         const unexpectedPrice = "600.00";
         jest.spyOn(queryWebSocket, "getCurrentPrice").mockResolvedValue(expectedPrice);
@@ -61,11 +61,9 @@ describe("autoFillFunction", () => {
         expect(res.json).toHaveBeenCalledWith({ price: expectedPrice });
     });
 
-    it("should make axios call and extract price correctly if getCurrentPrice is rejected", async () => {
-        const expectedPrice = "700.00";
-        jest.spyOn(queryWebSocket, "getCurrentPrice").mockRejectedValue(
-            new Error("Failed to fetch from websocket")
-        );
+    it("should make axios call and extract price correctly from AlphaVantage if getCurrentPrice is returns undefined price", async () => {
+        const expectedPrice = 700.0;
+        jest.spyOn(queryWebSocket, "getCurrentPrice").mockResolvedValue(undefined);
         axiosMock.onGet().reply(200, { "Global Quote": { "05. price": expectedPrice } });
 
         await autoFillFunction(req, res);

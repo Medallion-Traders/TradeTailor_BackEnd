@@ -8,6 +8,7 @@ import { Order } from "../models/Order.js";
 import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
 import TradeSummaryModel from "../models/TradeSummary.js";
+import DailyProfitModel from "../models/Profit.js";
 
 dotenv.config();
 
@@ -127,25 +128,18 @@ export const resetBalance = async (req, res) => {
     const userId = req.user.id;
     try {
         const user = await UserModel.findById(userId);
-        //Delete all existing positions, portfolio, and orders
-        //Reset user balance to default cash balance of 500k
         user.balance = process.env.DEFAULT_CASH_BALANCE;
-
-        //Delete all of the users' orders
         await Order.deleteMany({ user: userId });
+        const portfolio = await PortfolioModel.findOne({ user: userId });
+        const position_ids_array = portfolio.positions;
 
-        //Find their portfolio and associated positions ids
-        const position_ids_array = await PortfolioModel.findOne({ user: userId }).positions;
+        await Promise.all(
+            position_ids_array.map((position_id) => PositionModel.findByIdAndDelete(position_id))
+        );
 
-        position_ids_array.forEach(async (position_id) => {
-            PositionModel.findByIdAndDelete(position_id);
-        });
-
-        //Delete the trade summary
-        TradeSummaryModel.deleteMany({ user: userId });
-
-        //Delete the portfolio
+        await TradeSummaryModel.deleteMany({ user: userId });
         await PortfolioModel.findByIdAndDelete(portfolio._id);
+        await DailyProfitModel.deleteMany({ user: userId });
     } catch (error) {
         res.status(500).json({ message: "An error occurred while resetting the user's balance" });
     }
@@ -155,11 +149,12 @@ export const getUserInfo = async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const user = await UserModel.findById(userId).select("username email about");
+        const user = await UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        return res.status(200).json(user);
+        const result_object = { username: user.username, email: user.email, about: user.about };
+        return res.status(200).json(result_object);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: error.message });
