@@ -14,7 +14,6 @@ import {
     getThisMonthClosedPositions,
     getRealisedProfits,
 } from "../controllers/summaryController.js";
-import moment from "moment-timezone";
 
 let usMarketStatus;
 // Utility function for handling errors
