@@ -7,9 +7,11 @@ async function getStockPercentages(req, res) {
         const user_id = req.user.id;
 
         //Find all their open positions
-        const positions = await PortfolioModel.find({
+        const portfolio = await PortfolioModel.find({
             user: user_id,
         }).populate("positions");
+
+        const positions = portfolio.positions;
 
         const open_positions = positions.filter((position) => position.positionStatus === "open");
 
@@ -31,6 +33,7 @@ async function getStockPercentages(req, res) {
 
         return res.status(200).json(result);
     } catch (error) {
+        console.error(error);
         return res.status(500).json({ error: error.message });
     }
 }
@@ -46,14 +49,29 @@ async function getProfitLoss(req, res) {
             .toISOString()
             .split("T")[0];
 
-        // Query the database for all profit records for the user in the last 30 days, sorted by date
+        // Query the database for all profit records for the user in the last 30 days
         const profits = await DailyProfitModel.find({
             user: userId,
             date: { $gte: startDate },
-        }).sort("date");
+        });
+
+        //Sort by date
+        profits.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA - dateB;
+        });
 
         // Initialize an empty array to hold our profit/loss data
         const profitLossData = [];
+
+        if (profits.length > 0) {
+            //There is at least one entry
+            profitLossData.push({
+                x: profits[0].date,
+                y: profits[0].profit,
+            });
+        }
 
         // Iterate through each profit record
         for (let i = 0; i < profits.length - 1; i++) {
@@ -62,7 +80,7 @@ async function getProfitLoss(req, res) {
 
             // Add the profit difference and the date to our profit/loss data array
             profitLossData.push({
-                x: profits[i + 1].date.toISOString().split("T")[0],
+                x: profits[i + 1].date,
                 y: profitDiff,
             });
         }
@@ -70,6 +88,7 @@ async function getProfitLoss(req, res) {
         // Return the profit/loss data
         return res.status(200).json(profitLossData);
     } catch (error) {
+        console.error(error);
         return res.status(500).json({ error: error.message });
     }
 }

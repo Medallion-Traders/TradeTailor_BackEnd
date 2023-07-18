@@ -1,3 +1,4 @@
+import axios from "axios";
 import cron from "node-cron";
 import UserModel from "../models/Users.js";
 import PortfolioModel from "../models/Portfolio.js";
@@ -13,11 +14,8 @@ import {
     getThisMonthClosedPositions,
     getRealisedProfits,
 } from "../controllers/summaryController.js";
-import moment from "moment-timezone";
 
-let marketOpenTime;
-let marketCloseTime;
-
+let usMarketStatus;
 // Utility function for handling errors
 function handleErrors(fn) {
     return function (...args) {
@@ -473,9 +471,9 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 }
 
 async function fillOrder(order) {
-    const status_object = await getCurrentMarketStatus();
+    const status = isMarketOpen();
 
-    if (status_object.current_status == "open") {
+    if (status) {
         if (order.orderType === "market") {
             const price = await getCurrentPrice(order.symbol);
             order.filledStatus = "filled";
@@ -564,39 +562,46 @@ async function logTradeSummary(position, userId) {
     }
 }
 
-// Function to convert time string to a moment object
-const convertTime = (time, date) => {
-    const [hour, minute] = time.split(":").map(Number);
-    return moment.unix(date).set({ hour: hour, minute: minute });
-};
-
 // Function to check if the current time is between market open and close times
-const isMarketOpen = () => {
-    const currentTime = moment().unix();
-    console.log("Current time: ", currentTime);
-    return currentTime.isBetween(marketOpenTime, marketCloseTime);
-};
-
-(async function () {
-    // Initial fetching of market status
-    if (!marketOpenTime || !marketCloseTime) {
-        const marketStatus = await getCurrentMarketStatus();
-        const dateToday = moment().unix();
-        marketOpenTime = convertTime(marketStatus.local_open, dateToday);
-        marketCloseTime = convertTime(marketStatus.local_close, dateToday);
+function isMarketOpen() {
+    if (!usMarketStatus || !usMarketStatus.local_open || !usMarketStatus.local_close) {
+        // If the open or close times are not available, assume the market is closed
+        return false;
     }
-})();
+
+    const currentTime = Math.floor(new Date().getTime() / 1000); //UNIX
+    const openTime = usMarketStatus.local_open;
+    const closeTime = usMarketStatus.local_close;
+
+    return currentTime >= openTime && currentTime <= closeTime;
+}
+
+await axios
+    .get(process.env.REACT_APP_WEBSOCKET_URL)
+    .then((incoming) => {
+        (async function() {
+            // Initial fetching of market status
+            if (!usMarketStatus) {
+                usMarketStatus = await getCurrentMarketStatus();
+            }
+        })();
+        console.log("Successful initial fetch of market status, websocket server is running");
+    })
+    .catch((err) => {
+        if (axios.isAxiosError(err)) {
+            console.log(
+                "Please start the websocket server before the backend server so that market status can be fetched"
+            );
+        } else {
+            console.log("Some other error occurred in websocket server");
+        }
+    });
 
 // Cron job to fetch market status for the day at 6.02 AM Singapore time
 cron.schedule(
     "2 6 * * *",
     async () => {
-        const marketStatus = await getCurrentMarketStatus();
-
-        // Assume the local_open and local_close are in the format 'HH:mm' in Eastern Time
-        const dateToday = moment().unix();
-        marketOpenTime = convertTime(marketStatus.local_open, dateToday);
-        marketCloseTime = convertTime(marketStatus.local_close, dateToday);
+        usMarketStatus = await getCurrentMarketStatus();
     },
     {
         timezone: "Asia/Singapore",
