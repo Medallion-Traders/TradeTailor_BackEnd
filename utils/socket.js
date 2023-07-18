@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { getPortfolioValue, getUnrealisedProfits } from "../controllers/summaryController.js";
+import { isMarketOpen } from "./queryDB.js";
 
 let io; // Store the io instance globally
 
@@ -45,6 +46,7 @@ async function setupWebSocket(server, secretKey) {
 
         // Join a room based on user ID
         socket.join(userId);
+        // console.log(socket.rooms);
 
         socket.on("disconnect", () => {
             console.log("Client disconnected");
@@ -55,13 +57,30 @@ async function setupWebSocket(server, secretKey) {
 
     // Emit updates every 5 seconds to the respective user's room
     setInterval(async () => {
-        // Get the list of connected user IDs
-        const connectedUserIds = Object.keys(io.sockets.adapter.rooms);
+        // Iterate over all connected sockets
+        try {
+            if (isMarketOpen()) {
+                for (const [socketId, socket] of io.of("/").sockets) {
+                    // Filter out the socket ID from the rooms Set, to get the user ID
+                    const userId = Array.from(socket.rooms).find((id) => id !== socketId);
+                    console.log("User id: ", userId);
+                    if (!userId) continue;
 
-        for (const userId of connectedUserIds) {
-            // Emit updates to each user's room
-            await emitUpdate("getUnrealisedProfits", getUnrealisedProfits(userId), userId);
-            await emitUpdate("getPortfolioValue", getPortfolioValue(userId), userId);
+                    // Emit updates to each user's room
+                    const unrealisedProfits = await getUnrealisedProfits(userId);
+                    console.log("Unrealised profits: ", unrealisedProfits);
+                    const portfolioValue = await getPortfolioValue(userId);
+                    console.log("Portfolio value: ", portfolioValue);
+
+                    await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
+                    await emitUpdate("getPortfolioValue", portfolioValue, userId);
+                }
+            } else {
+                console.log("Market is closed");
+            }
+        } catch (err) {
+            console.log("Error in iterating over sockets");
+            console.error(err);
         }
     }, 5000);
 }

@@ -178,25 +178,31 @@ async function getRealisedProfits(userId) {
 //------------------------START OF CONSTANT EMIT FUNCTIONS------------------------//
 
 async function getUnrealisedProfits(userId) {
-    let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
-        path: "positions",
-        match: { positionStatus: "open" },
-    });
-    if (!portfolio) {
-        console.log(`No portfolio found for user ${userId}`);
-        return 0;
-    }
-
-    let totalUnrealisedProfits = 0;
-    for (position of portfolio.positions) {
-        const current_price = await getCurrentPrice(position.symbol);
-        if (position.positionType === "long") {
-            totalUnrealisedProfits += current_price - position.averagePrice * position.quantity;
-        } else {
-            totalUnrealisedProfits += position.averagePrice * position.quantity - current_price;
+    try {
+        let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
+            path: "positions",
+            match: { positionStatus: "open" },
+        });
+        if (!portfolio) {
+            console.log(`No portfolio found for user ${userId}`);
+            return 0;
         }
+
+        let totalUnrealisedProfits = 0;
+        for (const position of portfolio.positions) {
+            const current_price = await getCurrentPrice(position.symbol);
+            console.log(position.symbol, current_price);
+            if (position.positionType === "long") {
+                totalUnrealisedProfits += current_price - position.averagePrice * position.quantity;
+            } else {
+                totalUnrealisedProfits += position.averagePrice * position.quantity - current_price;
+            }
+        }
+        return totalUnrealisedProfits;
+    } catch (err) {
+        console.log(`Error fetching unrealised profits for user ${userId}`);
+        console.log(err);
     }
-    return totalUnrealisedProfits;
 }
 
 async function getPortfolioValue(userId) {
@@ -210,7 +216,7 @@ async function getPortfolioValue(userId) {
     }
 
     let totalValue = 0;
-    for (position of portfolio.positions) {
+    for (const position of portfolio.positions) {
         const current_price = await getCurrentPrice(position.symbol);
         if (position.positionType === "long") {
             totalValue += current_price * position.quantity;
@@ -221,6 +227,7 @@ async function getPortfolioValue(userId) {
             totalValue += profit;
         }
     }
+    console.log(totalValue);
     return totalValue;
 }
 
