@@ -26,7 +26,7 @@ describe("getUserBalance", () => {
         UserModel.findById.mockResolvedValue(user);
         await getUserBalance(req, res);
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({ balance: 10.12 });
+        expect(res.json).toHaveBeenCalledWith({ balance: 10.1234 });
     });
 
     it("should return 404 if user is not found", async () => {

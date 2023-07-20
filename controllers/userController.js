@@ -118,10 +118,15 @@ export const getUserBalance = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.status(200).json({ balance: Math.round(user.balance * 100) / 100 });
+        res.status(200).json({ balance: user.balance });
     } catch (error) {
         res.status(500).json({ message: "An error occurred while fetching the user's balance" });
     }
+};
+
+export const helperBalance = async (userId) => {
+    const user = await UserModel.findById(userId);
+    return user.balance;
 };
 
 export const resetBalance = async (req, res) => {

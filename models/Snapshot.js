@@ -1,20 +1,19 @@
 import mongoose from "mongoose";
 
-const ProfitSchema = mongoose.Schema(
+const SnapshotSchema = mongoose.Schema(
     {
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "UserModel",
             required: true,
         },
-        //In YYYY-MM-DD format
-        date: {
-            type: Date,
+        lastPortfolioValue: {
+            type: Number,
             required: true,
         },
-        profit: {
+        lastUnrealisedProfit: {
             type: Number,
-            default: 0,
+            required: true,
         },
     },
     {
@@ -22,6 +21,6 @@ const ProfitSchema = mongoose.Schema(
     }
 );
 
-const DailyProfitModel = mongoose.model("ProfitSchema", ProfitSchema, "profits");
+const SnapshotModel = mongoose.model("SnapshotSchema", SnapshotSchema, "snapshots");
 
-export default DailyProfitModel;
+export default SnapshotModel;

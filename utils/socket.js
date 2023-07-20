@@ -1,7 +1,17 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { getPortfolioValue, getUnrealisedProfits } from "../controllers/summaryController.js";
+import {
+    getTodaysOpenPositions,
+    getThisMonthOpenPositions,
+    getTodaysClosedPositions,
+    getThisMonthClosedPositions,
+    getRealisedProfits,
+    getUnrealisedProfits,
+    getPortfolioValue,
+    initializeUnrealisedProfitsAndPortfolioValue,
+    updateUnrealisedProfitsAndPortfolioValue,
+} from "../controllers/summaryController.js";
 import { isMarketOpen } from "./queryDB.js";
 
 let io; // Store the io instance globally
@@ -48,18 +58,29 @@ async function setupWebSocket(server, secretKey) {
         socket.join(userId);
         // console.log(socket.rooms);
 
+        //Initial emits
+        getTodaysOpenPositions(userId);
+        getThisMonthOpenPositions(userId);
+        getTodaysClosedPositions(userId);
+        getThisMonthClosedPositions(userId);
+        getRealisedProfits(userId);
+        initializeUnrealisedProfitsAndPortfolioValue(userId);
+
         socket.on("disconnect", () => {
             console.log("Client disconnected");
             // Leave the room when the client disconnects
             socket.leave(userId);
+
+            //Update the snapshot in the database
+            updateUnrealisedProfitsAndPortfolioValue(userId);
         });
     });
 
-    // Emit updates every 5 seconds to the respective user's room
-    setInterval(async () => {
-        // Iterate over all connected sockets
-        try {
-            if (isMarketOpen()) {
+    if (isMarketOpen()) {
+        // Emit updates every 5 seconds to the respective user's room
+        setInterval(async () => {
+            // Iterate over all connected sockets
+            try {
                 for (const [socketId, socket] of io.of("/").sockets) {
                     // Filter out the socket ID from the rooms Set, to get the user ID
                     const userId = Array.from(socket.rooms).find((id) => id !== socketId);
@@ -75,14 +96,12 @@ async function setupWebSocket(server, secretKey) {
                     await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
                     await emitUpdate("getPortfolioValue", portfolioValue, userId);
                 }
-            } else {
-                console.log("Market is closed");
+            } catch (err) {
+                console.log("Error in iterating over sockets");
+                console.error(err);
             }
-        } catch (err) {
-            console.log("Error in iterating over sockets");
-            console.error(err);
-        }
-    }, 5000);
+        }, 5000);
+    }
 }
 
 export { setupWebSocket, emitUpdate };
