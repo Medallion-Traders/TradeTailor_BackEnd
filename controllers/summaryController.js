@@ -13,6 +13,7 @@ async function getPendingOrders(req, res) {
             user: userId,
             filledStatus: "pending",
         });
+        console.log("orders", orders);
         res.status(200).json(orders);
     } catch (err) {
         console.error(`Function getPendingOrders broke and raised ${err}`);
@@ -221,9 +222,11 @@ async function getUnrealisedProfits(userId) {
             const current_price = await getCurrentPrice(position.symbol);
             console.log(position.symbol, current_price);
             if (position.positionType === "long") {
-                totalUnrealisedProfits += current_price - position.averagePrice * position.quantity;
+                totalUnrealisedProfits +=
+                    (current_price - position.averagePrice) * position.quantity;
             } else {
-                totalUnrealisedProfits += position.averagePrice * position.quantity - current_price;
+                totalUnrealisedProfits +=
+                    (position.averagePrice - current_price) * position.quantity;
             }
         }
         return totalUnrealisedProfits;

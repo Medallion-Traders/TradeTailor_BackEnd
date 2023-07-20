@@ -11,6 +11,7 @@ import {
     getThisMonthClosedPositions,
     getRealisedProfits,
 } from "../controllers/summaryController.js";
+import { helperBalance } from "../controllers/userController.js";
 
 let usMarketStatus;
 // Utility function for handling errors
@@ -469,7 +470,7 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 
 async function doesUserHaveEnoughBalance(newOrder, price) {
     const amount_req = newOrder.fixedQuantity * price;
-    if (amount_req > helperBalanceLimit(newOrder.user)) {
+    if (amount_req > helperBalance(newOrder.user)) {
         return false;
     }
     return true;
