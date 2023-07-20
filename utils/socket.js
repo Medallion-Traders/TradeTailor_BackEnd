@@ -15,6 +15,7 @@ import {
 import { isMarketOpen } from "./queryDB.js";
 
 let io; // Store the io instance globally
+dotenv.config();
 
 // This function can be used to emit an event to the client from any part of your code
 async function emitUpdate(event, data, room) {
@@ -24,7 +25,9 @@ async function emitUpdate(event, data, room) {
 }
 
 async function setupWebSocket(server, secretKey) {
-    dotenv.config();
+    // Map of intervals for each user
+    const userIntervals = new Map();
+
     io = new Server(server, {
         cors: {
             origin: process.env.REACT_APP_URL,
@@ -48,46 +51,32 @@ async function setupWebSocket(server, secretKey) {
     io.on("connection", (socket) => {
         console.log("New client connected");
 
-        const userId = socket.decoded?.id; // Extract the user ID from the decoded token
-        if (!userId) {
-            console.log("User ID not found");
-            return;
-        }
+        try {
+            const userId = socket.decoded?.id; // Extract the user ID from the decoded token
+            if (!userId) {
+                console.log("User ID not found");
+                return;
+            }
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
+            getRealisedProfits(userId);
 
-        // Join a room based on user ID
-        socket.join(userId);
-        // console.log(socket.rooms);
+            // Join a room based on user ID
+            socket.join(userId);
 
-        //Initial emits
-        getTodaysOpenPositions(userId);
-        getThisMonthOpenPositions(userId);
-        getTodaysClosedPositions(userId);
-        getThisMonthClosedPositions(userId);
-        getRealisedProfits(userId);
-        initializeUnrealisedProfitsAndPortfolioValue(userId);
+            //Initial emits
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
+            getTodaysClosedPositions(userId);
+            getThisMonthClosedPositions(userId);
+            getRealisedProfits(userId);
+            initializeUnrealisedProfitsAndPortfolioValue(userId);
 
-        socket.on("disconnect", () => {
-            console.log("Client disconnected");
-            // Leave the room when the client disconnects
-            socket.leave(userId);
-
-            //Update the snapshot in the database
-            updateUnrealisedProfitsAndPortfolioValue(userId);
-        });
-    });
-
-    if (isMarketOpen()) {
-        // Emit updates every 5 seconds to the respective user's room
-        setInterval(async () => {
-            // Iterate over all connected sockets
-            try {
-                for (const [socketId, socket] of io.of("/").sockets) {
-                    // Filter out the socket ID from the rooms Set, to get the user ID
-                    const userId = Array.from(socket.rooms).find((id) => id !== socketId);
-                    console.log("User id: ", userId);
-                    if (!userId) continue;
-
-                    // Emit updates to each user's room
+            // Start interval when a client connects
+            const intervalId = setInterval(async () => {
+                if (!isMarketOpen()) {
+                    console.log("Market is closed");
+                } else {
                     const unrealisedProfits = await getUnrealisedProfits(userId);
                     console.log("Unrealised profits: ", unrealisedProfits);
                     const portfolioValue = await getPortfolioValue(userId);
@@ -96,12 +85,26 @@ async function setupWebSocket(server, secretKey) {
                     await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
                     await emitUpdate("getPortfolioValue", portfolioValue, userId);
                 }
-            } catch (err) {
-                console.log("Error in iterating over sockets");
+            }, 5000);
+            userIntervals.set(userId, intervalId);
+
+            socket.on("disconnect", () => {
+                console.log("Client disconnected");
+                // Leave the room when the client disconnects
+                socket.leave(userId);
+
+                //Update the snapshot in the database
+                updateUnrealisedProfitsAndPortfolioValue(userId);
+            });
+        } catch (err) {
+            //console.log(err);
+            if (axios.isAxiosError(err)) {
+                console.log(err);
+            } else {
                 console.error(err);
             }
-        }, 5000);
-    }
+        }
+    });
 }
 
 export { setupWebSocket, emitUpdate };
