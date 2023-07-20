@@ -98,7 +98,7 @@ const createPortfolio = handleErrors(async function createPortfolio(newOrder, us
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 
     //Log the position status
-    logTradeSummary(newOrder, userId);
+    logTradeSummary(newPosition, userId);
 });
 
 const addToLongPosition = handleErrors(async function addToLongPosition(positionId, newOrder) {
@@ -154,7 +154,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 
     //Log the position status
-    logTradeSummary(newOrder, userId);
+    logTradeSummary(position, newOrder.user);
 });
 
 const partialCloseShortPosition = handleErrors(async function partialCloseShortPosition(
@@ -227,7 +227,7 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "decrease");
 
     //Log the position status
-    logTradeSummary(newOrder, userId);
+    logTradeSummary(newPosition, userId);
 });
 
 // Utility function for updating long position
@@ -263,7 +263,7 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
 
     //Log the position status
-    logTradeSummary(newOrder, userId);
+    logTradeSummary(position, newOrder.user);
 });
 
 // Utility function for handling partial long position closure
@@ -459,18 +459,23 @@ async function processShortPosition(newOrder, userId) {
 async function modifyCashBalance(newOrder, amount, instruction) {
     let user = await UserModel.findById(newOrder.user);
 
+    //console.log("This user is " + user.username + "@modifyCashBalance");
+
     if (instruction === "increase") {
         user.balance += amount;
     } else {
         user.balance -= amount;
     }
 
+    //console.log("Modify cash balance function report : " + user.balance);
+
     await user.save();
 }
 
 async function doesUserHaveEnoughBalance(newOrder, price) {
     const amount_req = newOrder.fixedQuantity * price;
-    if (amount_req > helperBalance(newOrder.user)) {
+    const balance = await helperBalance(newOrder.user);
+    if (amount_req > balance) {
         return false;
     }
     return true;
@@ -482,7 +487,7 @@ async function fillOrder(order) {
     if (status) {
         if (order.orderType === "market") {
             const price = await getCurrentPrice(order.symbol);
-            if (!doesUserHaveEnoughBalance(order, price)) {
+            if (!(await doesUserHaveEnoughBalance(order, price))) {
                 return {
                     isFilled: false,
                     status_object: usMarketStatus,
@@ -503,7 +508,7 @@ async function fillOrder(order) {
         } else if (order.orderType === "limit") {
             const price = await getCurrentPrice(order.symbol);
             if (price >= order.unitPrice) {
-                if (!doesUserHaveEnoughBalance(order, price)) {
+                if (!(await doesUserHaveEnoughBalance(order, price))) {
                     return {
                         isFilled: false,
                         status_object: usMarketStatus,
@@ -530,8 +535,10 @@ async function fillOrder(order) {
 }
 
 async function logTradeSummary(position, userId) {
-    // Strip the date from the position's updatedAt field
-    let updatedAt = position.updatedAt;
+    console.log("logTradeSummary function", "\n");
+    // Strip the date from the position's updatedAt field and set time to 00:00:00
+    let updatedAt = new Date(position.updatedAt);
+    updatedAt.setHours(0, 0, 0, 0);
 
     // Find the relevant TradeSummary document, if none, create it and add
     let tradeSummary = await TradeSummaryModel.findOne({
@@ -539,7 +546,12 @@ async function logTradeSummary(position, userId) {
         date: updatedAt,
     });
 
+    // console.log("tradeSummary: ", tradeSummary);
+
     let isOpen = position.positionStatus === "open" ? true : false;
+
+    // console.log("position status: ", position.positionStatus);
+    // console.log("isOpen : ", isOpen, "\n");
 
     if (!tradeSummary) {
         if (isOpen) {
@@ -551,6 +563,7 @@ async function logTradeSummary(position, userId) {
             };
 
             tradeSummary = await TradeSummaryModel.create(tradeData);
+            // console.log("Created new tradesummary " + tradeSummary);
 
             getTodaysOpenPositions(userId);
             getThisMonthOpenPositions(userId);
@@ -562,7 +575,9 @@ async function logTradeSummary(position, userId) {
             getTodaysOpenPositions(userId);
             getThisMonthOpenPositions(userId);
         } else {
-            tradeSummary.number_of_open_positions -= 1;
+            if (tradeSummary.number_of_open_positions > 0) {
+                tradeSummary.number_of_open_positions -= 1;
+            }
             tradeSummary.number_of_closed_positions += 1;
 
             getTodaysOpenPositions(userId);

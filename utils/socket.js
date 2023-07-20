@@ -57,12 +57,6 @@ async function setupWebSocket(server, secretKey) {
                 console.log("User ID not found");
                 return;
             }
-            getTodaysOpenPositions(userId);
-            getThisMonthOpenPositions(userId);
-            getRealisedProfits(userId);
-
-            // Join a room based on user ID
-            socket.join(userId);
 
             //Initial emits
             getTodaysOpenPositions(userId);
@@ -71,6 +65,9 @@ async function setupWebSocket(server, secretKey) {
             getThisMonthClosedPositions(userId);
             getRealisedProfits(userId);
             initializeUnrealisedProfitsAndPortfolioValue(userId);
+
+            // Join a room based on user ID
+            socket.join(userId);
 
             // Start interval when a client connects
             const intervalId = setInterval(async () => {
@@ -88,13 +85,17 @@ async function setupWebSocket(server, secretKey) {
             }, 5000);
             userIntervals.set(userId, intervalId);
 
-            socket.on("disconnect", () => {
+            socket.on("disconnect", async () => {
                 console.log("Client disconnected");
                 // Leave the room when the client disconnects
                 socket.leave(userId);
 
+                // Clear interval when the client disconnects
+                clearInterval(userIntervals.get(userId));
+                userIntervals.delete(userId);
+
                 //Update the snapshot in the database
-                updateUnrealisedProfitsAndPortfolioValue(userId);
+                await updateUnrealisedProfitsAndPortfolioValue(userId);
             });
         } catch (err) {
             //console.log(err);

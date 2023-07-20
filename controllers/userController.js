@@ -113,6 +113,7 @@ export const getUserBalance = async (req, res) => {
 
     try {
         const user = await UserModel.findById(userId);
+        //console.log("user balance is @getUserBalance", user.balance);
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });

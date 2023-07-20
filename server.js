@@ -36,9 +36,9 @@ function setupMiddleware(app) {
     app.use(morgan("common"));
     app.use(bodyParser.urlencoded({ extended: true }));
 
-    if (process.env.NODE_ENV !== "production") {
-        app.use(testUser);
-    }
+    // if (process.env.NODE_ENV !== "production") {
+    //     app.use(testUser);
+    // }
 }
 
 // This function sets up all the routes for the app

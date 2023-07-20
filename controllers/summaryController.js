@@ -192,16 +192,16 @@ async function getRealisedProfits(userId) {
     let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
         path: "positions",
     });
+    let result = 0;
     if (!portfolio) {
         console.log(`No portfolio found for user ${userId}`);
-        return 0;
+        emitUpdate("getRealisedProfits", result, userId);
+        return;
     }
 
-    emitUpdate(
-        "getRealisedProfits",
-        portfolio.positions.reduce((sum, position) => sum + position.profit, 0),
-        userId
-    );
+    result = portfolio.positions.reduce((sum, position) => sum + position.profit, 0);
+
+    emitUpdate("getRealisedProfits", result, userId);
 }
 
 //------------------------START OF CONSTANT EMIT FUNCTIONS------------------------//
@@ -265,7 +265,8 @@ async function getPortfolioValue(userId) {
 
 async function initializeUnrealisedProfitsAndPortfolioValue(userId) {
     // Attempt to get the snapshot for the user, if it does not exist, new documents with 2 zeros
-    let snapshot = await SnapshotModel.findOne({ user: userId });
+    let snapshot;
+    snapshot = await SnapshotModel.findOne({ user: userId });
     if (!snapshot) {
         snapshot = new SnapshotModel({
             user: userId,
@@ -274,6 +275,8 @@ async function initializeUnrealisedProfitsAndPortfolioValue(userId) {
         });
         await snapshot.save();
     }
+
+    console.log(snapshot, "\n");
 
     emitUpdate("getUnrealisedProfits", snapshot.lastUnrealisedProfit, userId);
     emitUpdate("getPortfolioValue", snapshot.lastPortfolioValue, userId);
@@ -284,8 +287,12 @@ async function updateUnrealisedProfitsAndPortfolioValue(userId) {
     const portfolioValue = await getPortfolioValue(userId);
 
     let snapshot = await SnapshotModel.findOne({ user: userId });
-    snapshot.unrealisedProfits = unrealisedProfits;
-    snapshot.portfolioValue = portfolioValue;
+    snapshot.lastUnrealisedProfit = unrealisedProfits;
+    snapshot.lastPortfolioValue = portfolioValue;
+
+    await snapshot.save();
+
+    console.log(snapshot, "\n");
 }
 
 export {
