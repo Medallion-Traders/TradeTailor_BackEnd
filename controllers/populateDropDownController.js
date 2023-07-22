@@ -21,8 +21,6 @@ class CompaniesController {
     }
 
     async fetchCompanies() {
-        const MAX_COUNT = 500;
-        let count = 0;
         try {
             const response = await axios.get(
                 `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
@@ -30,12 +28,8 @@ class CompaniesController {
             const jsonArray = await csvtojson().fromString(response.data);
 
             for (let object of jsonArray) {
-                if (count >= MAX_COUNT) {
-                    console.log("Successfully fetched companies' data");
-                    break;
-                } else if (object.status === "Active") {
+                if (object.status === "Active") {
                     this.companies.push({ symbol: object.symbol, name: object.name });
-                    count++;
                 }
             }
             this.lastUpdatedTime = Math.floor(Date.now() / 1000);

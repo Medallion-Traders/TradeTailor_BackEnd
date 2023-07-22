@@ -21,8 +21,10 @@ dotenv.config();
 
 // This function sets up the test user for the app to simulate JWT token usage
 function testUser(req, res, next) {
+    //email: "cortozitru@gufum.com"
+    //username: "cortozitru@gufum.com"
     req.user = {
-        id: "649d787a295eef856036a9e6",
+        id: "64b98984f03b3d97c4781a45",
     };
     next();
 }
@@ -36,7 +38,7 @@ function setupMiddleware(app) {
     app.use(morgan("common"));
     app.use(bodyParser.urlencoded({ extended: true }));
 
-    if (process.env.NODE_ENV == "test") {
+    if (process.env.NODE_ENV != "production") {
         app.use(testUser);
     }
 }
