@@ -23,4 +23,15 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - run: npm ci
     - run: npm run build --if-present
-    - run: npm test
+    - name: Run tests
+      run: npm test
+      env:
+        REACT_APP_URL: ${{ secrets.REACT_APP_URL }}
+        REACT_APP_SERVER_URL: ${{ secrets.REACT_APP_SERVER_URL }}
+        REACT_APP_WEBSOCKET_URL: ${{ secrets.REACT_APP_WEBSOCKET_URL }}
+        MONGODB_HOEGPT_PASSWORD: ${{ secrets.MONGODB_HOEGPT_PASSWORD }}
+        MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+        DEFAULT_CASH_BALANCE: ${{ secrets.DEFAULT_CASH_BALANCE }}
