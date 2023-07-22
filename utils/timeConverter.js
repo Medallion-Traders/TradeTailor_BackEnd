@@ -19,7 +19,8 @@ function convertUnixToUtc(unixTimestamp) {
         .toString()
         .padStart(2, "0")}:${utcSeconds.toString().padStart(2, "0")}`;
 
-    console.log(utcTimeString);
+    // console.log(utcTimeString);
+    return utcTimeString;
 }
 
 export default convertUnixToUtc;

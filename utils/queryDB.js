@@ -459,15 +459,11 @@ async function processShortPosition(newOrder, userId) {
 async function modifyCashBalance(newOrder, amount, instruction) {
     let user = await UserModel.findById(newOrder.user);
 
-    //console.log("This user is " + user.username + "@modifyCashBalance");
-
     if (instruction === "increase") {
         user.balance += amount;
     } else {
         user.balance -= amount;
     }
-
-    //console.log("Modify cash balance function report : " + user.balance);
 
     await user.save();
 }
@@ -501,9 +497,9 @@ async function fillOrder(order) {
             await order.save();
 
             if (order.direction == "long") {
-                processLongPosition(order, order.user);
+                await processLongPosition(order, order.user);
             } else {
-                processShortPosition(order, order.user);
+                await processShortPosition(order, order.user);
             }
         } else if (order.orderType === "limit") {
             const price = await getCurrentPrice(order.symbol);
@@ -522,9 +518,9 @@ async function fillOrder(order) {
                 await order.save();
 
                 if (order.direction == "long") {
-                    processLongPosition(order, order.user);
+                    await processLongPosition(order, order.user);
                 } else {
-                    processShortPosition(order, order.user);
+                    await processShortPosition(order, order.user);
                 }
             }
         }
@@ -535,7 +531,6 @@ async function fillOrder(order) {
 }
 
 async function logTradeSummary(position, userId) {
-    console.log("logTradeSummary function", "\n");
     // Strip the date from the position's updatedAt field and set time to 00:00:00
     let updatedAt = new Date(position.updatedAt);
     updatedAt.setHours(0, 0, 0, 0);
@@ -546,12 +541,7 @@ async function logTradeSummary(position, userId) {
         date: updatedAt,
     });
 
-    // console.log("tradeSummary: ", tradeSummary);
-
     let isOpen = position.positionStatus === "open" ? true : false;
-
-    // console.log("position status: ", position.positionStatus);
-    // console.log("isOpen : ", isOpen, "\n");
 
     if (!tradeSummary) {
         if (isOpen) {
@@ -563,7 +553,6 @@ async function logTradeSummary(position, userId) {
             };
 
             tradeSummary = await TradeSummaryModel.create(tradeData);
-            // console.log("Created new tradesummary " + tradeSummary);
 
             getTodaysOpenPositions(userId);
             getThisMonthOpenPositions(userId);
@@ -589,14 +578,13 @@ async function logTradeSummary(position, userId) {
     }
 }
 
-// Function to check if the current time is between market open and close times
-function isMarketOpen() {
+// Change isMarketOpen to take currentTime as an argument
+function isMarketOpen(currentTime = Math.floor(new Date().getTime() / 1000)) {
     if (!usMarketStatus || !usMarketStatus.local_open || !usMarketStatus.local_close) {
         // If the open or close times are not available, assume the market is closed
         return false;
     }
 
-    const currentTime = Math.floor(new Date().getTime() / 1000); //UNIX
     const openTime = usMarketStatus.local_open;
     const closeTime = usMarketStatus.local_close;
 
@@ -624,5 +612,18 @@ async function initializeMarketStatus() {
     }
 }
 
+function updateMarketStatus(newMarketStatus) {
+    usMarketStatus = newMarketStatus;
+}
+
 // Exports
-export { fillOrder, initializeMarketStatus, isMarketOpen };
+export {
+    fetchPosition,
+    calculateAveragePrice,
+    closeOrders,
+    handlePartialClosure,
+    initializeMarketStatus,
+    fillOrder,
+    isMarketOpen,
+    updateMarketStatus,
+};

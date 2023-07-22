@@ -2,6 +2,30 @@ import { Order } from "../models/Order.js";
 import { fillOrder } from "../utils/queryDB.js";
 import convertUnixToUtc from "../utils/timeConverter.js";
 
+const createOrder = (userData, orderData) => {
+    return new Order({
+        user: userData.id,
+        symbol: orderData.symbol,
+        fixedQuantity: orderData.fixedQuantity,
+        currentQuantity: orderData.fixedQuantity,
+        orderType: orderData.orderType,
+        totalAmount: orderData.totalAmount,
+        unitPrice: orderData.unitPrice,
+        filledStatus: "pending",
+        marketStatus: "undefined",
+    });
+};
+
+const processOrder = async (order, direction) => {
+    order.direction = direction;
+    const { isFilled, status_object, doesUserHaveEnoughBalance } = await fillOrder(order);
+    const buy_or_sell_message = direction == "long" ? "purchase" : "sale";
+
+    await order.save();
+
+    return { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message };
+};
+
 const stockFunction = async (req, res) => {
     try {
         const {
@@ -13,23 +37,20 @@ const stockFunction = async (req, res) => {
             transactionType,
         } = req.body;
 
-        // Create a generic order without direction
-        const newOrder = new Order({
-            user: req.user.id,
+        const newOrder = createOrder(req.user, {
             symbol,
             fixedQuantity,
-            currentQuantity: fixedQuantity,
             orderType,
             totalAmount,
             unitPrice,
-            filledStatus: "pending",
-            marketStatus: "undefined",
         });
 
         if (transactionType === "buy") {
-            await processOrder(newOrder, "long", res);
+            const result = await processOrder(newOrder, "long");
+            handleResponse(result, newOrder, res);
         } else {
-            await processOrder(newOrder, "short", res);
+            const result = await processOrder(newOrder, "short");
+            handleResponse(result, newOrder, res);
         }
     } catch (error) {
         console.error("Error buying/selling stock:", error);
@@ -37,12 +58,18 @@ const stockFunction = async (req, res) => {
     }
 };
 
-async function processOrder(newOrder, direction, res) {
+async function handleResponse(result, newOrder, res) {
     try {
-        newOrder.direction = direction;
-        const { isFilled, status_object, doesUserHaveEnoughBalance } = await fillOrder(newOrder);
-        const buy_or_sell_message = direction == "long" ? "purchase" : "sale";
-        await newOrder.save();
+        const { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message } = result;
+
+        if (
+            isFilled == undefined ||
+            status_object == undefined ||
+            doesUserHaveEnoughBalance == undefined ||
+            buy_or_sell_message == undefined
+        ) {
+            throw new Error("Missing parameters in result object");
+        }
 
         if (doesUserHaveEnoughBalance) {
             if (isFilled) {
@@ -120,4 +147,4 @@ async function processOrder(newOrder, direction, res) {
     }
 }
 
-export { stockFunction };
+export { createOrder, processOrder, stockFunction, handleResponse };

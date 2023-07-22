@@ -47,10 +47,8 @@ async function setupWebSocket(server, secretKey) {
         }
     });
 
-    // You can add as many event handlers as you need here.
-    io.on("connection", (socket) => {
+    io.on("connection", async (socket) => {
         console.log("New client connected");
-
         try {
             const userId = socket.decoded?.id; // Extract the user ID from the decoded token
             if (!userId) {
@@ -98,7 +96,6 @@ async function setupWebSocket(server, secretKey) {
                 await updateUnrealisedProfitsAndPortfolioValue(userId);
             });
         } catch (err) {
-            //console.log(err);
             if (axios.isAxiosError(err)) {
                 console.log(err);
             } else {
