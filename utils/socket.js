@@ -2,11 +2,15 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import {
-    getPortfolioValue,
-    getUnrealisedProfits,
-    getRealisedProfits,
     getTodaysOpenPositions,
     getThisMonthOpenPositions,
+    getTodaysClosedPositions,
+    getThisMonthClosedPositions,
+    getRealisedProfits,
+    getUnrealisedProfits,
+    getPortfolioValue,
+    initializeUnrealisedProfitsAndPortfolioValue,
+    updateUnrealisedProfitsAndPortfolioValue,
 } from "../controllers/summaryController.js";
 import { isMarketOpen } from "./queryDB.js";
 
@@ -43,77 +47,62 @@ async function setupWebSocket(server, secretKey) {
         }
     });
 
-    // You can add as many event handlers as you need here.
-    io.on("connection", (socket) => {
+    io.on("connection", async (socket) => {
         console.log("New client connected");
-
-        const userId = socket.decoded?.id; // Extract the user ID from the decoded token
-        if (!userId) {
-            console.log("User ID not found");
-            return;
-        }
-        getTodaysOpenPositions(userId);
-        getThisMonthOpenPositions(userId);
-        getRealisedProfits(userId);
-
-        // Join a room based on user ID
-        socket.join(userId);
-
-        // Start interval when a client connects
-        const intervalId = setInterval(async () => {
-            if (!isMarketOpen()) {
-                console.log("Market is closed");
-            } else {
-                const unrealisedProfits = await getUnrealisedProfits(userId);
-                console.log("Unrealised profits: ", unrealisedProfits);
-                const portfolioValue = await getPortfolioValue(userId);
-                console.log("Portfolio value: ", portfolioValue);
-
-                await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
-                await emitUpdate("getPortfolioValue", portfolioValue, userId);
+        try {
+            const userId = socket.decoded?.id; // Extract the user ID from the decoded token
+            if (!userId) {
+                console.log("User ID not found");
+                return;
             }
-        }, 5000);
-        userIntervals.set(userId, intervalId);
 
-        socket.on("disconnect", () => {
-            console.log("Client disconnected");
-            // Leave the room when the client disconnects
-            socket.leave(userId);
+            //Initial emits
+            getTodaysOpenPositions(userId);
+            getThisMonthOpenPositions(userId);
+            getTodaysClosedPositions(userId);
+            getThisMonthClosedPositions(userId);
+            getRealisedProfits(userId);
+            initializeUnrealisedProfitsAndPortfolioValue(userId);
 
-            // Clear interval when the client disconnects
-            clearInterval(userIntervals.get(userId));
-            userIntervals.delete(userId);
-        });
+            // Join a room based on user ID
+            socket.join(userId);
+
+            // Start interval when a client connects
+            const intervalId = setInterval(async () => {
+                if (!isMarketOpen()) {
+                    console.log("Market is closed");
+                } else {
+                    const unrealisedProfits = await getUnrealisedProfits(userId);
+                    console.log("Unrealised profits: ", unrealisedProfits);
+                    const portfolioValue = await getPortfolioValue(userId);
+                    console.log("Portfolio value: ", portfolioValue);
+
+                    await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
+                    await emitUpdate("getPortfolioValue", portfolioValue, userId);
+                }
+            }, 5000);
+            userIntervals.set(userId, intervalId);
+
+            socket.on("disconnect", async () => {
+                console.log("Client disconnected");
+                // Leave the room when the client disconnects
+                socket.leave(userId);
+
+                // Clear interval when the client disconnects
+                clearInterval(userIntervals.get(userId));
+                userIntervals.delete(userId);
+
+                //Update the snapshot in the database
+                await updateUnrealisedProfitsAndPortfolioValue(userId);
+            });
+        } catch (err) {
+            if (axios.isAxiosError(err)) {
+                console.log(err);
+            } else {
+                console.error(err);
+            }
+        }
     });
-
-    // Emit updates every 5 seconds to the respective user's room
-    // setInterval(async () => {
-    //     // Iterate over all connected sockets
-    //     try {
-    //         if (isMarketOpen()) {
-    //             for (const [socketId, socket] of io.of("/").sockets) {
-    //                 // Filter out the socket ID from the rooms Set, to get the user ID
-    //                 const userId = Array.from(socket.rooms).find((id) => id !== socketId);
-    //                 console.log("User id: ", userId);
-    //                 if (!userId) continue;
-
-    //                 // Emit updates to each user's room
-    //                 const unrealisedProfits = await getUnrealisedProfits(userId);
-    //                 console.log("Unrealised profits: ", unrealisedProfits);
-    //                 const portfolioValue = await getPortfolioValue(userId);
-    //                 console.log("Portfolio value: ", portfolioValue);
-
-    //                 await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
-    //                 await emitUpdate("getPortfolioValue", portfolioValue, userId);
-    //             }
-    //         } else {
-    //             console.log("Market is closed");
-    //         }
-    //     } catch (err) {
-    //         console.log("Error in iterating over sockets");
-    //         console.error(err);
-    //     }
-    // }, 5000);
 }
 
 export { setupWebSocket, emitUpdate };

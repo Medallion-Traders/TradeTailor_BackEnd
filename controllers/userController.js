@@ -9,6 +9,7 @@ import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import DailyProfitModel from "../models/Profit.js";
+import companiesController from "../utils/createCompaniesControllerInstance.js";
 
 dotenv.config();
 
@@ -83,6 +84,13 @@ export const loginUser = async (req, res) => {
         });
 
         delete user.password;
+
+        // If login is successful, update companies data in the background
+        if (companiesController.needsUpdate()) {
+            companiesController.fetchCompanies().catch((err) => {
+                console.error("Failed to update companies data", err);
+            });
+        }
         return res.status(200).json({ token, user });
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -113,15 +121,21 @@ export const getUserBalance = async (req, res) => {
 
     try {
         const user = await UserModel.findById(userId);
+        //console.log("user balance is @getUserBalance", user.balance);
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.status(200).json({ balance: Math.round(user.balance * 100) / 100 });
+        res.status(200).json({ balance: user.balance });
     } catch (error) {
         res.status(500).json({ message: "An error occurred while fetching the user's balance" });
     }
+};
+
+export const helperBalance = async (userId) => {
+    const user = await UserModel.findById(userId);
+    return user.balance;
 };
 
 export const resetBalance = async (req, res) => {
