@@ -27,11 +27,7 @@ describe("updateUserSummary", () => {
         const user = {
             id: "testId",
             about: "old about",
-            save: function() {
-                this.about = req.body.about;
-                delete this.save; // Delete the save method before returning the user
-                return this;
-            },
+            save: jest.fn().mockResolvedValue({ id: "testId", about: "new about" }),
         };
 
         UserModel.findById.mockResolvedValue(user);
@@ -39,8 +35,10 @@ describe("updateUserSummary", () => {
         await updateUserSummary(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        // Expect updated user without methods
-        expect(res.json).toHaveBeenCalledWith({ id: "testId", about: "new about" });
+        expect(res.json).toHaveBeenCalledWith({
+            message: "User bio updated successfully",
+            about: user.about,
+        });
     });
 
     it("should return 404 if user is not found", async () => {
