@@ -3,6 +3,7 @@ import PortfolioModel from "../models/Portfolio.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import { getCurrentPrice } from "../utils/queryWebSocket.js";
 import { emitUpdate } from "../utils/socket.js";
+import SnapshotModel from "../models/Snapshot.js";
 
 async function getPendingOrders(req, res) {
     try {
@@ -12,6 +13,7 @@ async function getPendingOrders(req, res) {
             user: userId,
             filledStatus: "pending",
         });
+        console.log("orders", orders);
         res.status(200).json(orders);
     } catch (err) {
         console.error(`Function getPendingOrders broke and raised ${err}`);
@@ -71,15 +73,24 @@ async function getClosedPositions(req, res) {
 
 async function getTodaysOpenPositions(userId) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayUtc = new Date(
+        Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    )
+        .toISOString()
+        .slice(0, 10);
+
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000); // add 24 hours in milliseconds to get tomorrow
+    const tomorrowUtc = new Date(
+        Date.UTC(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth(), tomorrow.getUTCDate())
+    )
+        .toISOString()
+        .slice(0, 10);
 
     const tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
         date: {
-            $gte: today,
-            $lt: tomorrow,
+            $gte: new Date(todayUtc),
+            $lt: new Date(tomorrowUtc),
         },
     });
 
@@ -92,14 +103,20 @@ async function getTodaysOpenPositions(userId) {
 
 async function getThisMonthOpenPositions(userId) {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const firstDayOfMonthUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+        .toISOString()
+        .slice(0, 10);
+    const firstDayOfNextMonthUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    )
+        .toISOString()
+        .slice(0, 10);
 
     const tradeSummaries = await TradeSummaryModel.find({
         user: userId,
         date: {
-            $gte: firstDayOfMonth,
-            $lt: firstDayOfNextMonth,
+            $gte: new Date(firstDayOfMonthUtc),
+            $lt: new Date(firstDayOfNextMonthUtc),
         },
     });
 
@@ -115,15 +132,23 @@ async function getThisMonthOpenPositions(userId) {
 
 async function getTodaysClosedPositions(userId) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayUtc = new Date(
+        Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+    )
+        .toISOString()
+        .slice(0, 10);
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowUtc = new Date(
+        Date.UTC(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth(), tomorrow.getUTCDate())
+    )
+        .toISOString()
+        .slice(0, 10);
 
     const tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
         date: {
-            $gte: today,
-            $lt: tomorrow,
+            $gte: new Date(todayUtc),
+            $lt: new Date(tomorrowUtc),
         },
     });
 
@@ -136,16 +161,20 @@ async function getTodaysClosedPositions(userId) {
 
 async function getThisMonthClosedPositions(userId) {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toLocaleString("en-US", { minimumIntegerDigits: 2 });
-    const firstDayOfMonth = new Date(year, now.getMonth(), 1);
-    const firstDayOfNextMonth = new Date(year, now.getMonth() + 1, 1);
+    const firstDayOfMonthUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+        .toISOString()
+        .slice(0, 10);
+    const firstDayOfNextMonthUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    )
+        .toISOString()
+        .slice(0, 10);
 
     const tradeSummaries = await TradeSummaryModel.find({
         user: userId,
         date: {
-            $gte: firstDayOfMonth,
-            $lt: firstDayOfNextMonth,
+            $gte: new Date(firstDayOfMonthUtc),
+            $lt: new Date(firstDayOfNextMonthUtc),
         },
     });
 
@@ -163,16 +192,16 @@ async function getRealisedProfits(userId) {
     let portfolio = await PortfolioModel.findOne({ user: userId }).populate({
         path: "positions",
     });
+    let result = 0;
     if (!portfolio) {
         console.log(`No portfolio found for user ${userId}`);
-        return 0;
+        emitUpdate("getRealisedProfits", result, userId);
+        return;
     }
 
-    emitUpdate(
-        "getRealisedProfits",
-        portfolio.positions.reduce((sum, position) => sum + position.profit, 0),
-        userId
-    );
+    result = portfolio.positions.reduce((sum, position) => sum + position.profit, 0);
+
+    emitUpdate("getRealisedProfits", result, userId);
 }
 
 //------------------------START OF CONSTANT EMIT FUNCTIONS------------------------//
@@ -193,9 +222,11 @@ async function getUnrealisedProfits(userId) {
             const current_price = await getCurrentPrice(position.symbol);
             console.log(position.symbol, current_price);
             if (position.positionType === "long") {
-                totalUnrealisedProfits += current_price - position.averagePrice * position.quantity;
+                totalUnrealisedProfits +=
+                    (current_price - position.averagePrice) * position.quantity;
             } else {
-                totalUnrealisedProfits += position.averagePrice * position.quantity - current_price;
+                totalUnrealisedProfits +=
+                    (position.averagePrice - current_price) * position.quantity;
             }
         }
         return totalUnrealisedProfits;
@@ -230,6 +261,39 @@ async function getPortfolioValue(userId) {
     console.log(totalValue);
     return totalValue;
 }
+//-----------------------INITIALSING CONSTANT EMIT FUNCTIONS-----------------------
+
+async function initializeUnrealisedProfitsAndPortfolioValue(userId) {
+    // Attempt to get the snapshot for the user, if it does not exist, new documents with 2 zeros
+    let snapshot;
+    snapshot = await SnapshotModel.findOne({ user: userId });
+    if (!snapshot) {
+        snapshot = new SnapshotModel({
+            user: userId,
+            lastPortfolioValue: 0,
+            lastUnrealisedProfit: 0,
+        });
+        await snapshot.save();
+    }
+
+    console.log(snapshot, "\n");
+
+    emitUpdate("getUnrealisedProfits", snapshot.lastUnrealisedProfit, userId);
+    emitUpdate("getPortfolioValue", snapshot.lastPortfolioValue, userId);
+}
+
+async function updateUnrealisedProfitsAndPortfolioValue(userId) {
+    const unrealisedProfits = await getUnrealisedProfits(userId);
+    const portfolioValue = await getPortfolioValue(userId);
+
+    let snapshot = await SnapshotModel.findOne({ user: userId });
+    snapshot.lastUnrealisedProfit = unrealisedProfits;
+    snapshot.lastPortfolioValue = portfolioValue;
+
+    await snapshot.save();
+
+    console.log(snapshot, "\n");
+}
 
 export {
     getClosedPositions,
@@ -242,4 +306,6 @@ export {
     getRealisedProfits,
     getUnrealisedProfits,
     getPortfolioValue,
+    initializeUnrealisedProfitsAndPortfolioValue,
+    updateUnrealisedProfitsAndPortfolioValue,
 };
