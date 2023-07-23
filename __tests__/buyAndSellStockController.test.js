@@ -432,7 +432,7 @@ describe("Order Functions", () => {
 
             expect(res.status).toHaveBeenCalledWith(200);
             expect(res.json).toHaveBeenCalledWith({
-                message: "Your balance is insufficient to make this transaction",
+                message: "Your balance is insufficient to make this transaction, order rejected",
             });
         });
 
