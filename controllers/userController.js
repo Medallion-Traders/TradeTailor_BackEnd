@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import DailyProfitModel from "../models/Profit.js";
 import FriendshipModel from "../models/FriendshipModel.js";
+import SnapshotModel from "../models/Snapshot.js";
 import mongoose from "mongoose";
 import companiesController from "../utils/createCompaniesControllerInstance.js";
 
@@ -124,7 +125,7 @@ export const getUserBalance = async (req, res) => {
 
     try {
         const user = await UserModel.findById(userId);
-        //console.log("user balance is @getUserBalance", user.balance);
+        // console.log("user balance is @getUserBalance", user.balance);
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -139,32 +140,6 @@ export const getUserBalance = async (req, res) => {
 export const helperBalance = async (userId) => {
     const user = await UserModel.findById(userId);
     return user.balance;
-};
-
-export const resetBalance = async (req, res) => {
-    const userId = req.user.id;
-    try {
-        const user = await UserModel.findById(userId);
-        user.balance = process.env.DEFAULT_CASH_BALANCE;
-        await Order.deleteMany({ user: userId });
-        const portfolio = await PortfolioModel.findOne({ user: userId });
-        const position_ids_array = portfolio.positions;
-
-        await Promise.all(
-            position_ids_array.map((position_id) => PositionModel.findByIdAndDelete(position_id))
-        );
-
-        await TradeSummaryModel.deleteMany({ user: userId });
-        await PortfolioModel.findByIdAndDelete(portfolio._id);
-        await DailyProfitModel.deleteMany({ user: userId });
-        await SnapshotModel.deleteOne({ user: userId });
-        await user.save();
-
-        res.status(200).json({ message: "User balance reset successfully" });
-        return;
-    } catch (error) {
-        res.status(500).json({ message: "An error occurred while resetting the user's balance" });
-    }
 };
 
 export const getUserInfo = async (req, res) => {
@@ -208,6 +183,8 @@ export const updateUserSummary = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 };
+
+// ============================| FRIENDSHIP ROUTES |================================
 
 export const getFriendProfile = async (req, res) => {
     try {
@@ -458,3 +435,90 @@ export async function sendFriendRequest(req, res) {
         res.status(500).json({ error: "An error occurred while sending friend request" });
     }
 }
+
+// ============================| SETTINGS ROUTES |================================
+export const updateUsername = async (req, res) => {
+    try {
+        const { newUsername } = req.body;
+        const userExists = await UserModel.findOne({ username: newUsername });
+
+        if (userExists) {
+            return res.status(400).json({ message: "Username already exists" });
+        }
+
+        const user = await UserModel.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+
+        user.username = newUsername;
+        await user.save();
+
+        res.status(200).json({ message: "Username updated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { oldPassword, newPassword } = req.body;
+
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(oldPassword, user.password);
+
+        if (!isPasswordCorrect) {
+            return res.status(400).json({ message: "Invalid current password" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+        user.password = hashedNewPassword;
+        await user.save();
+
+        return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetBalance = async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        user.balance = process.env.DEFAULT_CASH_BALANCE;
+        await Order.deleteMany({ user: userId });
+        const portfolio = await PortfolioModel.findOne({ user: userId });
+        const position_ids_array = portfolio.positions;
+
+        await Promise.all(
+            position_ids_array.map((position_id) => PositionModel.findByIdAndDelete(position_id))
+        );
+
+        await TradeSummaryModel.deleteMany({ user: userId });
+        await PortfolioModel.findByIdAndDelete(portfolio._id);
+        await DailyProfitModel.deleteMany({ user: userId });
+
+        const savedUser = await user.save();
+        if (!savedUser) {
+            return res.status(500).json({ message: "Failed to save user" });
+        }
+
+        res.status(200).json({ message: "Portfolio successfully reset" });
+    } catch (error) {
+        res.status(500).json({ message: `Unexpected error: ${error.message}` });
+    }
+};

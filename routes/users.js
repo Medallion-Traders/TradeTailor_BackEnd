@@ -14,6 +14,9 @@ import {
     getFriendRequests,
     getFriends,
     getNonFriends,
+    updateUsername,
+    changePassword,
+    resetBalance,
 } from "../controllers/userController.js";
 import verifyToken from "../middleware/auth.js";
 
@@ -35,5 +38,10 @@ users.get("/friends/incoming", verifyToken, getFriendRequests); // gets all inco
 users.put("/friends/respond/:requestId", verifyToken, respondToFriendRequest); // responds to a friend request specified in the request body
 users.post("/friends/request/:id", verifyToken, sendFriendRequest); // sends a friend request to the user specified in the request body
 users.get("/friends/non-friends", verifyToken, getNonFriends); // gets all non-friends
+
+// Settings routes
+users.put("/update/username", verifyToken, updateUsername);
+users.put("/update/password", verifyToken, changePassword);
+users.post("/update/reset", verifyToken, resetBalance);
 
 export default users;
