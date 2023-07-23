@@ -528,10 +528,6 @@ async function fillOrder(order) {
         return { isFilled: true, status_object: usMarketStatus, doesUserHaveEnoughBalance: true };
     } else {
         const result = await doesUserHaveEnoughBalance(order, order.unitPrice);
-        if (!result) {
-            //Delete the order
-            await Order.findByIdAndDelete(order._id);
-        }
         return {
             isFilled: false,
             status_object: usMarketStatus,

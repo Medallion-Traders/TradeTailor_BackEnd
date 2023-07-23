@@ -4,16 +4,15 @@ import jwt from "jsonwebtoken";
 import UserModel from "../models/Users.js";
 import PortfolioModel from "../models/Portfolio.js";
 import PositionModel from "../models/Position.js";
-import SnapshotModel from "../models/Snapshot.js";
 import { Order } from "../models/Order.js";
 import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import DailyProfitModel from "../models/Profit.js";
 import FriendshipModel from "../models/FriendshipModel.js";
-import SnapshotModel from "../models/Snapshot.js";
 import mongoose from "mongoose";
 import companiesController from "../utils/createCompaniesControllerInstance.js";
+import SnapshotModel from "../models/Snapshot.js";
 
 dotenv.config();
 
@@ -511,6 +510,7 @@ export const resetBalance = async (req, res) => {
         await TradeSummaryModel.deleteMany({ user: userId });
         await PortfolioModel.findByIdAndDelete(portfolio._id);
         await DailyProfitModel.deleteMany({ user: userId });
+        await SnapshotModel.deleteOne({ user: userId });
 
         const savedUser = await user.save();
         if (!savedUser) {

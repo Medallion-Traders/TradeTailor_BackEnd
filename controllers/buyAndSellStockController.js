@@ -21,7 +21,9 @@ const processOrder = async (order, direction) => {
     const { isFilled, status_object, doesUserHaveEnoughBalance } = await fillOrder(order);
     const buy_or_sell_message = direction == "long" ? "purchase" : "sale";
 
-    await order.save();
+    if (doesUserHaveEnoughBalance) {
+        await order.save();
+    }
 
     return { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message };
 };
@@ -136,7 +138,7 @@ async function handleResponse(result, newOrder, res) {
             }
         } else {
             res.status(200).json({
-                message: "Your balance is insufficient to make this transaction",
+                message: "Your balance is insufficient to make this transaction, order rejected",
             });
         }
     } catch (error) {
