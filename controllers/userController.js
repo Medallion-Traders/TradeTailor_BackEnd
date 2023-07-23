@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import UserModel from "../models/Users.js";
 import PortfolioModel from "../models/Portfolio.js";
 import PositionModel from "../models/Position.js";
+import SnapshotModel from "../models/Snapshot.js";
 import { Order } from "../models/Order.js";
 import sendEmail from "../utils/sendEmail.js";
 import dotenv from "dotenv";
@@ -156,6 +157,11 @@ export const resetBalance = async (req, res) => {
         await TradeSummaryModel.deleteMany({ user: userId });
         await PortfolioModel.findByIdAndDelete(portfolio._id);
         await DailyProfitModel.deleteMany({ user: userId });
+        await SnapshotModel.deleteOne({ user: userId });
+        await user.save();
+
+        res.status(200).json({ message: "User balance reset successfully" });
+        return;
     } catch (error) {
         res.status(500).json({ message: "An error occurred while resetting the user's balance" });
     }
@@ -431,7 +437,8 @@ export async function sendFriendRequest(req, res) {
         if (existingFriendship) {
             if (existingFriendship.status === "Pending") {
                 return res.status(400).json({
-                    error: "A friend request is already pending. Please check your incoming requests tab",
+                    error:
+                        "A friend request is already pending. Please check your incoming requests tab",
                 });
             } else {
                 return res.status(400).json({ error: "You are already friends" });

@@ -12,6 +12,7 @@ import {
     getRealisedProfits,
 } from "../controllers/summaryController.js";
 import { helperBalance } from "../controllers/userController.js";
+import { Order } from "../models/Order.js";
 
 let usMarketStatus;
 // Utility function for handling errors
@@ -526,7 +527,16 @@ async function fillOrder(order) {
         }
         return { isFilled: true, status_object: usMarketStatus, doesUserHaveEnoughBalance: true };
     } else {
-        return { isFilled: false, status_object: usMarketStatus, doesUserHaveEnoughBalance: true };
+        const result = await doesUserHaveEnoughBalance(order, order.unitPrice);
+        if (!result) {
+            //Delete the order
+            await Order.findByIdAndDelete(order._id);
+        }
+        return {
+            isFilled: false,
+            status_object: usMarketStatus,
+            doesUserHaveEnoughBalance: result,
+        };
     }
 }
 
