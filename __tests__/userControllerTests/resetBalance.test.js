@@ -47,7 +47,7 @@ describe("resetBalance", () => {
         await resetBalance(req, res);
         expect(res.status).toHaveBeenCalledWith(500);
         expect(res.json).toHaveBeenCalledWith({
-            message: "An error occurred while resetting the user's balance",
+            message: "Unexpected error: resetting error",
         });
     });
 
