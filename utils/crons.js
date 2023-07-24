@@ -12,12 +12,16 @@ export async function fetchMarketStatus() {
     updateMarketStatus(usMarketStatus);
 }
 
-export async function checkMarketStatusAndFillOrders(currentTime, isMarketOpenFunc = isMarketOpen) {
-    if (!isMarketOpenFunc(currentTime)) {
+export async function checkMarketStatusAndFillOrders() {
+    //console.log("Checking market status and filling orders");
+    //console.log(isMarketOpenFunc(uniqueTime));
+    console.log(isMarketOpen());
+    if (!isMarketOpen()) {
         return;
     }
-
-    const orders = await Order.find({ filledStatus: "pending" });
+    const orders = await Order.find({
+        filledStatus: "pending",
+    });
 
     const promises = orders.map(async (order) => {
         const { doesUserHaveEnoughBalance } = await fillOrder(order);

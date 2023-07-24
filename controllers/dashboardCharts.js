@@ -7,12 +7,12 @@ async function getStockPercentages(req, res) {
         const user_id = req.user.id;
 
         //Find all their open positions
-        const portfolio = await PortfolioModel.find({
+        const portfolio = await PortfolioModel.findOne({
             user: user_id,
         }).populate("positions");
 
         // Check if portfolio exists
-        if (!portfolio || !portfolio.positions) {
+        if (!portfolio) {
             return res
                 .status(404)
                 .json({ message: "No portfolio/positions found. Start trading now!" });
@@ -43,6 +43,7 @@ async function getStockPercentages(req, res) {
             });
         });
 
+        console.log(result);
         return res.status(200).json(result);
     } catch (error) {
         console.error(error);
@@ -55,7 +56,11 @@ async function getProfitLoss(req, res) {
         const userId = req.user.id;
 
         // Subtract 30 days from the current date to get the start date for our query
-        const startDate = moment().subtract(30, "days").toDate().toISOString().split("T")[0];
+        const startDate = moment()
+            .subtract(30, "days")
+            .toDate()
+            .toISOString()
+            .split("T")[0];
 
         // Query the database for all profit records for the user in the last 30 days
         const profits = await DailyProfitModel.find({

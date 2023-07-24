@@ -14,7 +14,7 @@ async function getPendingOrders(req, res) {
             user: userId,
             filledStatus: "pending",
         });
-        console.log("orders", orders);
+        //console.log("orders", orders);
         res.status(200).json(orders);
     } catch (err) {
         console.error(`Function getPendingOrders broke and raised ${err}`);

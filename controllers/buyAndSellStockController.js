@@ -137,7 +137,7 @@ async function handleResponse(result, newOrder, res) {
                 }
             }
         } else {
-            res.status(200).json({
+            res.status(403).json({
                 message: "Your balance is insufficient to make this transaction, order rejected",
             });
         }

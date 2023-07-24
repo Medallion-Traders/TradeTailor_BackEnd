@@ -12,13 +12,13 @@ async function autoFillFunction(req, res) {
         // Attempt to get the current price from the websocket
         let price = await getCurrentPrice(symbol);
 
-        // If the websocket does not return a price, get it from the AlphaVantage API
-        if (!price) {
-            const response = await axios.get(
-                `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
-            );
-            price = response.data["Global Quote"]["05. price"];
-        }
+        // // If the websocket does not return a price, get it from the AlphaVantage API
+        // if (!price) {
+        //     const response = await axios.get(
+        //         `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+        //     );
+        //     price = response.data["Global Quote"]["05. price"];
+        // }
 
         // If there is still no price, send a 500 response
         if (!price) {

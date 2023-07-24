@@ -26,7 +26,14 @@ function handleErrors(fn) {
 
 // Utility function for fetching position
 async function fetchPosition(positionId) {
-    const position = await PositionModel.findById(positionId);
+    const position = await PositionModel.findById(positionId).populate([
+        {
+            path: "openingOrders",
+        },
+        {
+            path: "closingOrders",
+        },
+    ]);
     if (!position) throw new Error("Position not found");
     return position;
 }
@@ -145,8 +152,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     await position.closingOrders.push(newOrder._id);
 
     // Close all openingOrders, both closed and open
-    const populatedPosition = await position.populate("openingOrders");
-    await closeOrders(populatedPosition.openingOrders);
+    await closeOrders(position.openingOrders);
 
     // Save the updated position
     await position.save();
@@ -182,7 +188,7 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
     position.closingOrders.push(newOrder._id);
 
     // Update the openingOrders field by finding the unclosed orders and closing them in a FIFO style by timestamp
-    let orders = await position.populate("openingOrders").openingOrders;
+    let orders = position.openingOrders;
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
     //Calculate new average price and new total amount
@@ -213,6 +219,8 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
         closingOrders: [],
         profit: 0,
     });
+
+    console.log(newPosition);
 
     await newPosition.save();
 
@@ -254,8 +262,7 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     position.closingOrders.push(newOrder._id);
 
     // Close all openingOrders, both closed and open
-    const populatedPosition = await position.populate("openingOrders");
-    await closeOrders(populatedPosition.openingOrders);
+    await closeOrders(position.openingOrders);
 
     // Save the updated position
     await position.save();
@@ -292,7 +299,7 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
     position.closingOrders.push(newOrder._id);
 
     // Update the openingOrders field by finding the unclosed orders and closing them in a FIFO style by timestamp
-    let orders = await position.populate("openingOrders").openingOrders;
+    let orders = position.openingOrders;
     orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     await handlePartialClosure(orders, newOrder.fixedQuantity);
 
@@ -381,9 +388,27 @@ async function processLongPosition(newOrder, userId) {
                 getTodaysClosedPositions(userId);
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
-                const remainderOrder = { ...newOrder };
-                remainderOrder.fixedQuantity -= position.quantity;
+
+                console.log("New order ", newOrder);
+                let remainderOrder = {
+                    user: newOrder.user,
+                    symbol: newOrder.symbol,
+                    fixedQuantity: Math.abs(newOrder.fixedQuantity - position.quantity),
+                    currentQuantity: Math.abs(newOrder.fixedQuantity - position.quantity),
+                    orderType: newOrder.orderType,
+                    totalAmount:
+                        Math.abs(newOrder.fixedQuantity - position.quantity) * newOrder.unitPrice,
+                    unitPrice: newOrder.unitPrice,
+                    filledStatus: newOrder.filledStatus,
+                    marketStatus: newOrder.marketStatus == "open" ? "closed" : "open",
+                    direction: newOrder.direction,
+                };
+                remainderOrder = await Order.create(remainderOrder);
+                console.log("Remainder ", remainderOrder);
+
                 await createNewPosition(remainderOrder, userId);
+                getTodaysOpenPositions(userId);
+                getThisMonthOpenPositions(userId);
             }
         }
     }
@@ -443,9 +468,25 @@ async function processShortPosition(newOrder, userId) {
                 getTodaysClosedPositions(userId);
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
-                const remainderOrder = { ...newOrder };
-                remainderOrder.fixedQuantity -= position.quantity;
+                console.log("New order ", newOrder);
+                let remainderOrder = {
+                    user: newOrder.user,
+                    symbol: newOrder.symbol,
+                    fixedQuantity: Math.abs(newOrder.fixedQuantity - position.quantity),
+                    currentQuantity: Math.abs(newOrder.fixedQuantity - position.quantity),
+                    orderType: newOrder.orderType,
+                    totalAmount:
+                        Math.abs(newOrder.fixedQuantity - position.quantity) * newOrder.unitPrice,
+                    unitPrice: newOrder.unitPrice,
+                    filledStatus: newOrder.filledStatus,
+                    marketStatus: newOrder.marketStatus == "open" ? "closed" : "open",
+                    direction: newOrder.direction,
+                };
+                remainderOrder = await Order.create(remainderOrder);
+                console.log("Remainder ", remainderOrder);
                 await createNewPosition(remainderOrder, userId);
+                getTodaysOpenPositions(userId);
+                getThisMonthOpenPositions(userId);
             }
         }
     }
@@ -472,10 +513,62 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 async function doesUserHaveEnoughBalance(newOrder, price) {
     const amount_req = newOrder.fixedQuantity * price;
     const balance = await helperBalance(newOrder.user);
-    if (amount_req > balance) {
-        return false;
+    const portfolio = await PortfolioModel.findOne({ user: newOrder.user }).populate("positions");
+    if (!portfolio) {
+        return true;
+    } else {
+        const fetchPositions = await Promise.all(
+            portfolio.positions.map((positionId) => fetchPosition(positionId))
+        );
+
+        const position = await fetchPositions.findOne(
+            (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
+        );
+
+        if (position) {
+            if (position.positionType === "long") {
+                if (newOrder.direction === "long") {
+                    return amount_req <= balance;
+                } else {
+                    if (position.quantity >= newOrder.fixedQuantity) {
+                        return true;
+                    } else {
+                        //Find out if after profit or loss is booked on the long position,
+                        //the excess cash can be used to fill the incoming order
+                        const profit = position.quantity * (price - position.averagePrice);
+
+                        const newTotalCash = balance + profit;
+
+                        return (
+                            price * Math.abs(newOrder.fixedQuantity - position.quantity) <=
+                            newTotalCash
+                        );
+                    }
+                }
+            } else {
+                if (newOrder.direction === "short") {
+                    return amount_req <= balance;
+                } else {
+                    if (position.quantity >= newOrder.fixedQuantity) {
+                        return true;
+                    } else {
+                        //Find out if after profit or loss is booked on the short position,
+                        //the excess cash can be used to fill the incoming order
+                        const profit = position.quantity * (position.averagePrice - price);
+
+                        const newTotalCash = balance + profit;
+
+                        return (
+                            price * Math.abs(newOrder.fixedQuantity - position.quantity) <=
+                            newTotalCash
+                        );
+                    }
+                }
+            }
+        } else {
+            return true;
+        }
     }
-    return true;
 }
 
 async function fillOrder(order) {
@@ -484,6 +577,7 @@ async function fillOrder(order) {
     if (status) {
         if (order.orderType === "market") {
             const price = await getCurrentPrice(order.symbol);
+            console.log(price);
             if (!(await doesUserHaveEnoughBalance(order, price))) {
                 return {
                     isFilled: false,
@@ -502,9 +596,10 @@ async function fillOrder(order) {
             } else {
                 await processShortPosition(order, order.user);
             }
+            // Filled at a better price
         } else if (order.orderType === "limit") {
             const price = await getCurrentPrice(order.symbol);
-            if (price >= order.unitPrice) {
+            if (order.direction === "short" && order.unitPrice <= price) {
                 if (!(await doesUserHaveEnoughBalance(order, price))) {
                     return {
                         isFilled: false,
@@ -517,15 +612,41 @@ async function fillOrder(order) {
                 order.unitPrice = price;
                 order.totalAmount = order.fixedQuantity * order.unitPrice;
                 await order.save();
-
-                if (order.direction == "long") {
-                    await processLongPosition(order, order.user);
-                } else {
-                    await processShortPosition(order, order.user);
+                await processShortPosition(order, order.user);
+                return {
+                    isFilled: true,
+                    status_object: usMarketStatus,
+                    doesUserHaveEnoughBalance: true,
+                };
+                //Filled at a better price
+            } else if (order.direction === "long" && order.unitPrice >= price) {
+                if (!(await doesUserHaveEnoughBalance(order, price))) {
+                    return {
+                        isFilled: false,
+                        status_object: usMarketStatus,
+                        doesUserHaveEnoughBalance: false,
+                    };
                 }
+                order.filledStatus = "filled";
+                order.marketStatus = "open";
+                order.unitPrice = price;
+                order.totalAmount = order.fixedQuantity * order.unitPrice;
+                await order.save();
+                await processLongPosition(order, order.user);
+                return {
+                    isFilled: true,
+                    status_object: usMarketStatus,
+                    doesUserHaveEnoughBalance: true,
+                };
             }
+            //Order was not filled, order remains as "pending"
+            const result = await doesUserHaveEnoughBalance(order, order.unitPrice);
+            return {
+                isFilled: false,
+                status_object: usMarketStatus,
+                doesUserHaveEnoughBalance: result,
+            };
         }
-        return { isFilled: true, status_object: usMarketStatus, doesUserHaveEnoughBalance: true };
     } else {
         const result = await doesUserHaveEnoughBalance(order, order.unitPrice);
         return {
@@ -585,7 +706,11 @@ async function logTradeSummary(position, userId) {
 }
 
 // Change isMarketOpen to take currentTime as an argument
-function isMarketOpen(currentTime = Math.floor(new Date().getTime() / 1000)) {
+function isMarketOpen(currentTime) {
+    if (!currentTime) {
+        currentTime = Math.floor(new Date().getTime() / 1000);
+    }
+
     if (!usMarketStatus || !usMarketStatus.local_open || !usMarketStatus.local_close) {
         // If the open or close times are not available, assume the market is closed
         return false;
@@ -594,7 +719,7 @@ function isMarketOpen(currentTime = Math.floor(new Date().getTime() / 1000)) {
     const openTime = usMarketStatus.local_open;
     const closeTime = usMarketStatus.local_close;
 
-    //console.log(currentTime >= openTime && currentTime <= closeTime);
+    console.log(currentTime >= openTime && currentTime <= closeTime);
     return currentTime >= openTime && currentTime <= closeTime;
 }
 
@@ -605,6 +730,7 @@ async function initializeMarketStatus() {
         // Initial fetching of market status
         if (!usMarketStatus) {
             usMarketStatus = await getCurrentMarketStatus();
+            console.log(usMarketStatus);
         }
         console.log("Successful initial fetch of market status, websocket server is running");
     } catch (err) {
