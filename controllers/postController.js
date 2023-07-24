@@ -4,7 +4,7 @@ import UserModel from "../models/Users.js";
 
 export const getAllPosts = async (req, res) => {
     try {
-        const posts = await PostModel.find().populate("comments");
+        const posts = await PostModel.find().populate("comments").sort({ createdAt: -1 });
         res.status(200).json(posts);
     } catch (error) {
         res.status(500).json({ message: error.message });
