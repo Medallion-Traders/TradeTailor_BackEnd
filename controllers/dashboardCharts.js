@@ -11,9 +11,21 @@ async function getStockPercentages(req, res) {
             user: user_id,
         }).populate("positions");
 
+        // Check if portfolio exists
+        if (!portfolio || !portfolio.positions) {
+            return res
+                .status(404)
+                .json({ message: "No portfolio/positions found. Start trading now!" });
+        }
+
         const positions = portfolio.positions;
 
         const open_positions = positions.filter((position) => position.positionStatus === "open");
+
+        // Check if there are any open positions
+        if (open_positions.length === 0) {
+            return res.status(200).json({ message: "No open positions found in this portfolio." });
+        }
 
         //Treatment is the same for long and short positions as their cash balance is locked
         const total_invested_amount = open_positions.reduce(
@@ -43,11 +55,7 @@ async function getProfitLoss(req, res) {
         const userId = req.user.id;
 
         // Subtract 30 days from the current date to get the start date for our query
-        const startDate = moment()
-            .subtract(30, "days")
-            .toDate()
-            .toISOString()
-            .split("T")[0];
+        const startDate = moment().subtract(30, "days").toDate().toISOString().split("T")[0];
 
         // Query the database for all profit records for the user in the last 30 days
         const profits = await DailyProfitModel.find({
