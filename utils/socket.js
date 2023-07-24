@@ -73,9 +73,7 @@ async function setupWebSocket(server, secretKey) {
                     console.log("Market is closed");
                 } else {
                     const unrealisedProfits = await getUnrealisedProfits(userId);
-                    console.log("Unrealised profits: ", unrealisedProfits);
                     const portfolioValue = await getPortfolioValue(userId);
-                    console.log("Portfolio value: ", portfolioValue);
 
                     await emitUpdate("getUnrealisedProfits", unrealisedProfits, userId);
                     await emitUpdate("getPortfolioValue", portfolioValue, userId);
