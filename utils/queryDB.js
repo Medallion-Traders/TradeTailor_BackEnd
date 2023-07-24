@@ -659,7 +659,7 @@ async function fillOrder(order) {
 
 async function logTradeSummary(position, userId) {
     // Strip the date from the position's updatedAt field and set time to 00:00:00
-    let updatedAt = new Date(position.updatedAt);
+    let updatedAt = new Date();
     updatedAt.setHours(0, 0, 0, 0);
 
     // Find the relevant TradeSummary document, if none, create it and add

@@ -164,6 +164,7 @@ async function getTodaysOpenPositions(userId) {
         .toISOString()
         .slice(0, 10);
 
+    console.log(new Date(todayUtc));
     const tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
         date: {
