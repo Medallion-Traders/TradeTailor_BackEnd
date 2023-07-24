@@ -10,6 +10,7 @@ import stockdata from "./routes/data.js";
 import transactions from "./routes/transactions.js";
 import users from "./routes/users.js";
 import summary from "./routes/summary.js";
+import posts from "./routes/posts.js";
 import { createServer } from "http";
 import { setupWebSocket } from "./utils/socket.js";
 import charts from "./routes/charts.js";
@@ -52,6 +53,7 @@ function setupRoutes(app) {
     app.use("/summary", verifyToken, summary);
     app.use("/charts", verifyToken, charts);
     app.use("/notifications", verifyToken, notifications);
+    app.use("/posts", posts);
 }
 
 async function connectDatabase() {

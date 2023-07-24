@@ -1,4 +1,5 @@
 import { Order } from "../models/Order.js";
+import UserModel from "../models/Users.js";
 import PortfolioModel from "../models/Portfolio.js";
 import TradeSummaryModel from "../models/TradeSummary.js";
 import { getCurrentPrice } from "../utils/queryWebSocket.js";
@@ -64,6 +65,85 @@ async function getClosedPositions(req, res) {
     } catch (err) {
         console.error(`Function getClosedPositions broke and raised ${err}`);
         res.status(500).json({ error: err.toString() });
+    }
+}
+
+const fetchRealisedProfits = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const portfolio = await PortfolioModel.findOne({ user: userId }).populate({
+            path: "positions",
+        });
+
+        if (!portfolio) {
+            return res.status(404).json({ message: `No portfolio found for user ${userId}` });
+        }
+
+        const result = portfolio.positions.reduce((sum, position) => sum + position.profit, 0);
+
+        res.status(200).json({ profits: result });
+    } catch (error) {
+        console.error(`Error fetching realised profits for user ${userId}: ${error}`);
+        res.status(500).json({ message: `Server error occurred: ${error}` });
+    }
+};
+
+async function getLeaderboard(req, res) {
+    try {
+        const portfolios = await PortfolioModel.find({})
+            .populate({
+                path: "positions",
+            })
+            .populate("user");
+
+        if (!portfolios) {
+            return res.status(404).json({ message: "No portfolios found" });
+        }
+
+        let leaderboard = portfolios.map((portfolio) => ({
+            id: portfolio.user._id,
+            username: portfolio.user.username,
+            profits: portfolio.positions.reduce((sum, position) => sum + position.profit, 0),
+        }));
+
+        leaderboard.sort((a, b) => b.profits - a.profits);
+
+        // Add rank to each user in the leaderboard
+        leaderboard = leaderboard.map((user, index) => ({
+            ...user,
+            rank: index + 1,
+        }));
+
+        const currentUserId = req.user.id;
+
+        let currentUserData = leaderboard.find((user) => user.id === currentUserId);
+
+        if (!currentUserData) {
+            // get current user info if they don't have a portfolio
+            const currentUser = await UserModel.findById(currentUserId);
+            currentUserData = {
+                id: currentUserId,
+                username: currentUser.username,
+                profits: null,
+            };
+        }
+
+        const currentUserIndex = leaderboard.findIndex((user) => user.id === currentUserId);
+        let topUsers;
+
+        if (currentUserIndex < 10) {
+            topUsers = leaderboard.slice(0, 10);
+        } else {
+            topUsers = [...leaderboard.slice(0, 10), leaderboard[currentUserIndex]];
+        }
+
+        return res
+            .status(200)
+            .json({ status: "success", data: { topUsers, currentUser: currentUserData } });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ status: "fail", message: "Server error" });
     }
 }
 
@@ -299,6 +379,8 @@ export {
     getClosedPositions,
     getPendingOrders,
     getOpenPositions,
+    fetchRealisedProfits,
+    getLeaderboard,
     getTodaysOpenPositions,
     getThisMonthOpenPositions,
     getTodaysClosedPositions,
