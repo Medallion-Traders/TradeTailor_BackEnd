@@ -52,7 +52,9 @@ describe("getStockPercentages", () => {
         await getStockPercentages(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith([]);
+        expect(res.json).toHaveBeenCalledWith({
+            message: "No open positions found in this portfolio.",
+        });
     });
 
     it("should return empty array if user has no open positions", async () => {
@@ -70,7 +72,9 @@ describe("getStockPercentages", () => {
         await getStockPercentages(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith([]);
+        expect(res.json).toHaveBeenCalledWith({
+            message: "No open positions found in this portfolio.",
+        });
     });
 
     it("should handle error in getStockPercentages", async () => {
