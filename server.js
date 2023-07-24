@@ -9,17 +9,23 @@ import verifyToken from "./middleware/auth.js";
 import stockdata from "./routes/data.js";
 import transactions from "./routes/transactions.js";
 import users from "./routes/users.js";
-import webSocketRouter from "./routes/webSocket.js";
 import summary from "./routes/summary.js";
+import posts from "./routes/posts.js";
 import { createServer } from "http";
 import { setupWebSocket } from "./utils/socket.js";
+import charts from "./routes/charts.js";
+import startCrons from "./utils/crons.js";
+import { initializeMarketStatus } from "./utils/queryDB.js";
+import notifications from "./routes/notifications.js";
 
 dotenv.config();
 
 // This function sets up the test user for the app to simulate JWT token usage
 function testUser(req, res, next) {
+    //email: "cortozitru@gufum.com"
+    //username: "cortozitru@gufum.com"
     req.user = {
-        id: "649d787a295eef856036a9e6",
+        id: "64b98984f03b3d97c4781a45",
     };
     next();
 }
@@ -33,9 +39,9 @@ function setupMiddleware(app) {
     app.use(morgan("common"));
     app.use(bodyParser.urlencoded({ extended: true }));
 
-    if (process.env.NODE_ENV !== "production") {
-        app.use(testUser);
-    }
+    // if (process.env.NODE_ENV != "production") {
+    //     app.use(testUser);
+    // }
 }
 
 // This function sets up all the routes for the app
@@ -44,8 +50,10 @@ function setupRoutes(app) {
     app.use("/data", verifyToken, stockdata);
     app.use("/transactions", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
-    app.use("/webSocket", verifyToken, webSocketRouter);
     app.use("/summary", verifyToken, summary);
+    app.use("/charts", verifyToken, charts);
+    app.use("/notifications", verifyToken, notifications);
+    app.use("/posts", posts);
 }
 
 async function connectDatabase() {
@@ -73,6 +81,12 @@ async function start() {
     server.listen(process.env.PORT || 3001, () =>
         console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)
     );
+
+    //Initialize market status
+    await initializeMarketStatus();
+
+    // Start all the cron jobs
+    startCrons();
 }
 
 start();
