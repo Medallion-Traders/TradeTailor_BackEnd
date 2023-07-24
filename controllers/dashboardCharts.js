@@ -7,7 +7,7 @@ async function getStockPercentages(req, res) {
         const user_id = req.user.id;
 
         //Find all their open positions
-        const portfolio = await PortfolioModel.find({
+        const portfolio = await PortfolioModel.findOne({
             user: user_id,
         }).populate("positions");
 

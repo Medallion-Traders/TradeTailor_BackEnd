@@ -4,7 +4,7 @@ const PortfolioSchema = mongoose.Schema(
     {
         user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "UserModel",
+            ref: "users",
             required: true,
         },
         positions: [

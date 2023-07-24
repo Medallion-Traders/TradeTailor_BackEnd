@@ -14,7 +14,7 @@ async function getPendingOrders(req, res) {
             user: userId,
             filledStatus: "pending",
         });
-        console.log("orders", orders);
+        // console.log("orders", orders);
         res.status(200).json(orders);
     } catch (err) {
         console.error(`Function getPendingOrders broke and raised ${err}`);
@@ -117,7 +117,7 @@ async function getLeaderboard(req, res) {
 
         const currentUserId = req.user.id;
 
-        let currentUserData = leaderboard.find((user) => user.id === currentUserId);
+        let currentUserData = leaderboard.find((user) => String(user.id) === String(currentUserId));
 
         if (!currentUserData) {
             // get current user info if they don't have a portfolio
@@ -138,12 +138,10 @@ async function getLeaderboard(req, res) {
             topUsers = [...leaderboard.slice(0, 10), leaderboard[currentUserIndex]];
         }
 
-        return res
-            .status(200)
-            .json({ status: "success", data: { topUsers, currentUser: currentUserData } });
+        return res.status(200).json({ topUsers, currentUser: currentUserData });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ status: "fail", message: "Server error" });
+        return res.status(500).json({ message: "Server error" });
     }
 }
 
