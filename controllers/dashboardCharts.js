@@ -24,7 +24,7 @@ async function getStockPercentages(req, res) {
 
         // Check if there are any open positions
         if (open_positions.length === 0) {
-            return res.status(200).json({ message: "No open positions found in this portfolio." });
+            return res.status(403).json({ message: "No open positions found in this portfolio." });
         }
 
         //Treatment is the same for long and short positions as their cash balance is locked
@@ -43,7 +43,7 @@ async function getStockPercentages(req, res) {
             });
         });
 
-        console.log(result);
+        //console.log(result);
         return res.status(200).json(result);
     } catch (error) {
         console.error(error);

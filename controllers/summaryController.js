@@ -164,7 +164,8 @@ async function getTodaysOpenPositions(userId) {
         .toISOString()
         .slice(0, 10);
 
-    console.log(new Date(todayUtc));
+    console.log("Today's date is ", new Date(todayUtc));
+    console.log("Tommorow's date is ", new Date(tomorrowUtc));
     const tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
         date: {
@@ -355,7 +356,7 @@ async function initializeUnrealisedProfitsAndPortfolioValue(userId) {
         await snapshot.save();
     }
 
-    console.log(snapshot, "\n");
+    console.log("Snapshot model , ", snapshot);
 
     emitUpdate("getUnrealisedProfits", snapshot.lastUnrealisedProfit, userId);
     emitUpdate("getPortfolioValue", snapshot.lastPortfolioValue, userId);
@@ -371,7 +372,7 @@ async function updateUnrealisedProfitsAndPortfolioValue(userId) {
 
     await snapshot.save();
 
-    console.log(snapshot, "\n");
+    console.log("SNAPSHOT MODEL : ", snapshot);
 }
 
 export {

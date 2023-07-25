@@ -18,14 +18,14 @@ const createOrder = (userData, orderData) => {
 
 const processOrder = async (order, direction) => {
     order.direction = direction;
-    const { isFilled, status_object, doesUserHaveEnoughBalance } = await fillOrder(order);
+    const { isFilled, status_object, doesUserHaveEnoughBalance, price } = await fillOrder(order);
     const buy_or_sell_message = direction == "long" ? "purchase" : "sale";
 
     if (doesUserHaveEnoughBalance) {
         await order.save();
     }
 
-    return { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message };
+    return { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message, price };
 };
 
 const stockFunction = async (req, res) => {
@@ -62,13 +62,20 @@ const stockFunction = async (req, res) => {
 
 async function handleResponse(result, newOrder, res) {
     try {
-        const { isFilled, status_object, doesUserHaveEnoughBalance, buy_or_sell_message } = result;
+        const {
+            isFilled,
+            status_object,
+            doesUserHaveEnoughBalance,
+            buy_or_sell_message,
+            price,
+        } = result;
 
         if (
             isFilled == undefined ||
             status_object == undefined ||
             doesUserHaveEnoughBalance == undefined ||
-            buy_or_sell_message == undefined
+            buy_or_sell_message == undefined ||
+            price == undefined
         ) {
             throw new Error("Missing parameters in result object");
         }
@@ -77,11 +84,11 @@ async function handleResponse(result, newOrder, res) {
             if (isFilled) {
                 if (newOrder.orderType == "market") {
                     res.status(200).json({
-                        message: `Stock ${buy_or_sell_message} was successful, your market order was filled at market price of ${newOrder.unitPrice}`,
+                        message: `Stock ${buy_or_sell_message} was successful, your market order was filled at market price of ${price}`,
                     });
                 } else {
                     res.status(200).json({
-                        message: `Stock ${buy_or_sell_message} was successful. Your limit order has been filled at a better market price of ${newOrder.unitPrice}`,
+                        message: `Stock ${buy_or_sell_message} was successful. Your limit order has been filled at a better market price of ${price}`,
                     });
                 }
             } else {
@@ -138,7 +145,7 @@ async function handleResponse(result, newOrder, res) {
             }
         } else {
             res.status(403).json({
-                message: "Your balance is insufficient to make this transaction, order rejected",
+                message: `Your balance is insufficient to make this transaction at price ${price}, order rejected`,
             });
         }
     } catch (error) {

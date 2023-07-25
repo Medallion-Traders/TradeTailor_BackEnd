@@ -220,7 +220,7 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
         profit: 0,
     });
 
-    console.log(newPosition);
+    //console.log(newPosition);
 
     await newPosition.save();
 
@@ -389,7 +389,7 @@ async function processLongPosition(newOrder, userId) {
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
 
-                console.log("New order ", newOrder);
+                //console.log("New order ", newOrder);
                 let remainderOrder = {
                     user: newOrder.user,
                     symbol: newOrder.symbol,
@@ -404,7 +404,7 @@ async function processLongPosition(newOrder, userId) {
                     direction: newOrder.direction,
                 };
                 remainderOrder = await Order.create(remainderOrder);
-                console.log("Remainder ", remainderOrder);
+                //console.log("Remainder ", remainderOrder);
 
                 await createNewPosition(remainderOrder, userId);
                 getTodaysOpenPositions(userId);
@@ -468,7 +468,7 @@ async function processShortPosition(newOrder, userId) {
                 getTodaysClosedPositions(userId);
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
-                console.log("New order ", newOrder);
+                //console.log("New order ", newOrder);
                 let remainderOrder = {
                     user: newOrder.user,
                     symbol: newOrder.symbol,
@@ -483,7 +483,7 @@ async function processShortPosition(newOrder, userId) {
                     direction: newOrder.direction,
                 };
                 remainderOrder = await Order.create(remainderOrder);
-                console.log("Remainder ", remainderOrder);
+                //console.log("Remainder ", remainderOrder);
                 await createNewPosition(remainderOrder, userId);
                 getTodaysOpenPositions(userId);
                 getThisMonthOpenPositions(userId);
@@ -503,8 +503,10 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 
     if (instruction === "increase") {
         user.balance += amount;
+        console.log("modifyCashBalance increased amount by ", amount);
     } else {
         user.balance -= amount;
+        console.log("modifyCashBalance increased amount by ", amount);
     }
 
     await user.save();
@@ -521,7 +523,7 @@ async function doesUserHaveEnoughBalance(newOrder, price) {
             portfolio.positions.map((positionId) => fetchPosition(positionId))
         );
 
-        const position = await fetchPositions.findOne(
+        const position = await fetchPositions.find(
             (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
         );
 
@@ -577,12 +579,13 @@ async function fillOrder(order) {
     if (status) {
         if (order.orderType === "market") {
             const price = await getCurrentPrice(order.symbol);
-            console.log(price);
+            //console.log(price);
             if (!(await doesUserHaveEnoughBalance(order, price))) {
                 return {
                     isFilled: false,
                     status_object: usMarketStatus,
                     doesUserHaveEnoughBalance: false,
+                    price: price,
                 };
             }
             order.filledStatus = "filled";
@@ -596,6 +599,12 @@ async function fillOrder(order) {
             } else {
                 await processShortPosition(order, order.user);
             }
+            return {
+                isFilled: true,
+                status_object: usMarketStatus,
+                doesUserHaveEnoughBalance: true,
+                price: price,
+            };
             // Filled at a better price
         } else if (order.orderType === "limit") {
             const price = await getCurrentPrice(order.symbol);
@@ -605,6 +614,7 @@ async function fillOrder(order) {
                         isFilled: false,
                         status_object: usMarketStatus,
                         doesUserHaveEnoughBalance: false,
+                        price: price,
                     };
                 }
                 order.filledStatus = "filled";
@@ -617,6 +627,7 @@ async function fillOrder(order) {
                     isFilled: true,
                     status_object: usMarketStatus,
                     doesUserHaveEnoughBalance: true,
+                    price: price,
                 };
                 //Filled at a better price
             } else if (order.direction === "long" && order.unitPrice >= price) {
@@ -625,6 +636,7 @@ async function fillOrder(order) {
                         isFilled: false,
                         status_object: usMarketStatus,
                         doesUserHaveEnoughBalance: false,
+                        price: price,
                     };
                 }
                 order.filledStatus = "filled";
@@ -637,6 +649,7 @@ async function fillOrder(order) {
                     isFilled: true,
                     status_object: usMarketStatus,
                     doesUserHaveEnoughBalance: true,
+                    price: price,
                 };
             }
             //Order was not filled, order remains as "pending"
@@ -645,6 +658,7 @@ async function fillOrder(order) {
                 isFilled: false,
                 status_object: usMarketStatus,
                 doesUserHaveEnoughBalance: result,
+                price: order.unitPrice,
             };
         }
     } else {
@@ -653,19 +667,33 @@ async function fillOrder(order) {
             isFilled: false,
             status_object: usMarketStatus,
             doesUserHaveEnoughBalance: result,
+            price: order.unitPrice,
         };
     }
 }
 
 async function logTradeSummary(position, userId) {
-    // Strip the date from the position's updatedAt field and set time to 00:00:00
-    let updatedAt = new Date();
-    updatedAt.setHours(0, 0, 0, 0);
+    // Get the current date and time
+    const now = new Date();
+
+    // Create a date string in 'yyyy-mm-dd' format
+    const dateString =
+        now.getUTCFullYear() +
+        "-" +
+        (now.getUTCMonth() + 1).toString().padStart(2, "0") +
+        "-" +
+        now
+            .getUTCDate()
+            .toString()
+            .padStart(2, "0");
+
+    // Convert this back to a Date object, resulting in a date that corresponds to 00:00:00 on the current day in UTC
+    const dateUtc = new Date(dateString);
 
     // Find the relevant TradeSummary document, if none, create it and add
     let tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
-        date: updatedAt,
+        date: dateUtc,
     });
 
     let isOpen = position.positionStatus === "open" ? true : false;
@@ -674,7 +702,7 @@ async function logTradeSummary(position, userId) {
         if (isOpen) {
             let tradeData = {
                 user: userId,
-                date: updatedAt,
+                date: dateUtc,
                 number_of_open_positions: 1,
                 number_of_closed_positions: 0,
             };
@@ -719,7 +747,7 @@ function isMarketOpen(currentTime) {
     const openTime = usMarketStatus.local_open;
     const closeTime = usMarketStatus.local_close;
 
-    console.log(currentTime >= openTime && currentTime <= closeTime);
+    //console.log(currentTime >= openTime && currentTime <= closeTime);
     return currentTime >= openTime && currentTime <= closeTime;
 }
 
@@ -730,16 +758,15 @@ async function initializeMarketStatus() {
         // Initial fetching of market status
         if (!usMarketStatus) {
             usMarketStatus = await getCurrentMarketStatus();
-            console.log(usMarketStatus);
+            //console.log(usMarketStatus);
         }
-        console.log("Successful initial fetch of market status, websocket server is running");
+        //console.log("Successful initial fetch of market status, websocket server is running");
     } catch (err) {
         if (axios.isAxiosError(err)) {
-            console.log(
-                "Please start the websocket server before the backend server so that market status can be fetched"
-            );
+            //console.log(
+            //    "Please start the websocket server before the backend server so that market status can be fetched");
         } else {
-            console.log("Some other error occurred in websocket server");
+            // console.log("Some other error occurred in websocket server");
         }
     }
 }

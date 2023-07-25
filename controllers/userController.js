@@ -501,23 +501,38 @@ export const resetBalance = async (req, res) => {
         user.balance = process.env.DEFAULT_CASH_BALANCE;
         await Order.deleteMany({ user: userId });
         const portfolio = await PortfolioModel.findOne({ user: userId });
-        const position_ids_array = portfolio.positions;
 
-        await Promise.all(
-            position_ids_array.map((position_id) => PositionModel.findByIdAndDelete(position_id))
-        );
+        if (portfolio) {
+            const position_ids_array = portfolio.positions;
 
-        await TradeSummaryModel.deleteMany({ user: userId });
-        await PortfolioModel.findByIdAndDelete(portfolio._id);
-        await DailyProfitModel.deleteMany({ user: userId });
-        await SnapshotModel.deleteOne({ user: userId });
+            await Promise.all(
+                position_ids_array.map((position_id) =>
+                    PositionModel.findByIdAndDelete(position_id)
+                )
+            );
 
-        const savedUser = await user.save();
-        if (!savedUser) {
-            return res.status(500).json({ message: "Failed to save user" });
+            await TradeSummaryModel.deleteMany({ user: userId }).then(() => {
+                console.log("Trade summary deleted");
+            });
+            await PortfolioModel.findByIdAndDelete(portfolio._id).then(() => {
+                console.log("Portfolio summary deleted");
+            });
+            await DailyProfitModel.deleteMany({ user: userId }).then(() => {
+                console.log("Daily Profit Model summary deleted");
+            });
+            await SnapshotModel.deleteOne({ user: userId }).then(() => {
+                console.log("Snapshot Model deleted");
+            });
+
+            const savedUser = await user.save();
+            if (!savedUser) {
+                return res.status(500).json({ message: "Failed to save user" });
+            }
+            res.status(200).json({ message: "Portfolio successfully reset" });
+            return;
+        } else {
+            res.status(200).json({ message: "Portfolio already reset" });
         }
-
-        res.status(200).json({ message: "Portfolio successfully reset" });
     } catch (error) {
         res.status(500).json({ message: `Unexpected error: ${error.message}` });
     }
