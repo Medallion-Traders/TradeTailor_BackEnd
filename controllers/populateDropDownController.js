@@ -35,7 +35,6 @@ class CompaniesController {
             this.lastUpdatedTime = Math.floor(Date.now() / 1000);
         } catch (err) {
             console.error(err);
-            throw err;
         }
     }
 

@@ -7,7 +7,7 @@ class UserBehavior(TaskSet):
 
     @task
     def load_stock_price(self):
-        self.client.get("/data/stock-price/AAPL")  # Here AAPL is an example, replace with real stock symbol
+        self.client.get("/data/stock-price/AAPL")  
 
     @task
     def get_all_notifications(self):
@@ -26,16 +26,21 @@ class UserBehavior(TaskSet):
         self.client.get("/summary/open-positions")
 
     @task
+    def get_pending_orders(self):
+        self.client.get("/summary/closed-positions")
+
+    @task
     def order(self):
-        self.client.post("/transactions/order", json={"symbol": "AAPL", "quantity": 10, "price": 150})  # Example
-
-    @task
-    def register_user(self):
-        self.client.post("/auth/register", json={"username": "test_user", "password": "test_password"})  # Example
-
-    @task
-    def login_user(self):
-        self.client.post("/auth/login", json={"username": "test_user", "password": "test_password"})  # Example
+        self.client.post("/transactions/order", 
+                         json= {
+                             "company": "AAPL", 
+                             "quantity": 10, 
+                             "orderType": "market",
+                             "totalAmount": 1000,
+                             "unitPrice": 100, 
+                             "transactionType": "buy"
+                             }
+                        )  
 
     @task
     def get_user_balance(self):

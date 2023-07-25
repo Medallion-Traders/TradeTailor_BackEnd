@@ -158,7 +158,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     await position.save();
 
     //Increase the cash balance
-    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
+    modifyCashBalance(newOrder, position.quantity * newOrder.unitPrice, "increase");
 
     //Log the position status
     logTradeSummary(position, newOrder.user);
@@ -268,7 +268,7 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     await position.save();
 
     //Increase the cash balance
-    modifyCashBalance(newOrder, newOrder.fixedQuantity * newOrder.unitPrice, "increase");
+    modifyCashBalance(newOrder, position.quantity * newOrder.unitPrice, "increase");
 
     //Log the position status
     logTradeSummary(position, newOrder.user);
@@ -506,7 +506,7 @@ async function modifyCashBalance(newOrder, amount, instruction) {
         console.log("modifyCashBalance increased amount by ", amount);
     } else {
         user.balance -= amount;
-        console.log("modifyCashBalance increased amount by ", amount);
+        console.log("modifyCashBalance decreased amount by ", amount);
     }
 
     await user.save();
@@ -524,7 +524,7 @@ async function doesUserHaveEnoughBalance(newOrder, price) {
         );
 
         const position = await fetchPositions.find(
-            (position) => position.symbol === newOrder.symbol && position.positionStatus === "open"
+            (position) => position.symbol == newOrder.symbol && position.positionStatus == "open"
         );
 
         if (position) {
