@@ -130,6 +130,7 @@ function setupRoutes(app) {
     app.use("/data", verifyToken, stockdata);
     app.use("/transactions", verifyToken, transactions);
     app.get("/", (req, res) => res.send("Server deployed successfully"));
+    app.head("/", (req, res) => res.end());
     app.use("/summary", verifyToken, summary);
     app.use("/charts", verifyToken, charts);
     app.use("/notifications", verifyToken, notifications);
