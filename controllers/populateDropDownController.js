@@ -1,7 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import csvtojson from "csvtojson";
-import Company from "./models/Company"; // import the Company model
+import Company from "../models/Company.js"; // import the Company model
 
 dotenv.config();
 
