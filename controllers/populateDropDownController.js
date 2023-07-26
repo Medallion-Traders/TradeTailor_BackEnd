@@ -1,12 +1,12 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import csvtojson from "csvtojson";
+import Company from "./models/Company"; // import the Company model
 
 dotenv.config();
 
 class CompaniesController {
     constructor() {
-        this.companies = [];
         this.lastUpdatedTime = null;
     }
 
@@ -29,7 +29,8 @@ class CompaniesController {
 
             for (let object of jsonArray) {
                 if (object.status === "Active") {
-                    this.companies.push({ symbol: object.symbol, name: object.name });
+                    const company = new Company({ symbol: object.symbol, name: object.name });
+                    await company.save(); // save the company to the database
                 }
             }
             this.lastUpdatedTime = Math.floor(Date.now() / 1000);
@@ -46,7 +47,8 @@ class CompaniesController {
                 return res.status(500).json({ error: err.message });
             }
         }
-        res.status(200).json(this.companies);
+        const companies = await Company.find(); // fetch all companies from the database
+        res.status(200).json(companies);
     }
 }
 

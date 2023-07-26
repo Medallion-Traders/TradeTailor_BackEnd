@@ -758,15 +758,16 @@ async function initializeMarketStatus() {
         // Initial fetching of market status
         if (!usMarketStatus) {
             usMarketStatus = await getCurrentMarketStatus();
-            //console.log(usMarketStatus);
+            console.log(usMarketStatus);
         }
-        //console.log("Successful initial fetch of market status, websocket server is running");
+        console.log("Successful initial fetch of market status, websocket server is running");
     } catch (err) {
         if (axios.isAxiosError(err)) {
-            //console.log(
-            //    "Please start the websocket server before the backend server so that market status can be fetched");
+            console.log(
+                "Please start the websocket server before the backend server so that market status can be fetched"
+            );
         } else {
-            // console.log("Some other error occurred in websocket server");
+            console.log("Some other error occurred in websocket server");
         }
     }
 }
