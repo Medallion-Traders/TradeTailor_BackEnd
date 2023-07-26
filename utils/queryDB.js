@@ -38,6 +38,13 @@ async function fetchPosition(positionId) {
     return position;
 }
 
+//Special fetch without populating the orders
+async function fetchPositionWithoutOrders(positionId) {
+    const position = await PositionModel.findById(positionId);
+    if (!position) throw new Error("Position not found");
+    return position;
+}
+
 // Utility function for calculating average price
 function calculateAveragePrice(position, newOrder) {
     const totalQuantity = position.quantity + newOrder.fixedQuantity;
@@ -138,7 +145,7 @@ const closeShortPosition = handleErrors(async function closeShortPosition(positi
     // position.quantity = 0;
     // position.averagePrice = 0;
     // position.totalAmount = 0;
-    position.profit = profit;
+    position.profit += profit;
     position.positionStatus = "closed";
 
     //Increase the cash balance by profit
@@ -177,8 +184,8 @@ const partialCloseShortPosition = handleErrors(async function partialCloseShortP
     position.quantity -= newOrder.fixedQuantity;
     position.profit += profit;
 
-    //Increase the cash balance by profit
-    modifyCashBalance(newOrder, profit, "increase");
+    // //Increase the cash balance by profit
+    // modifyCashBalance(newOrder, profit, "increase");
 
     //Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
@@ -248,7 +255,7 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     // position.quantity = 0;
     // position.averagePrice = 0;
     // position.totalAmount = 0;
-    position.profit = profit;
+    position.profit += profit;
     position.positionStatus = "closed";
 
     //Increase the cash balance by profit
@@ -288,8 +295,8 @@ const partialCloseLongPosition = handleErrors(async function partialCloseLongPos
     position.quantity -= newOrder.fixedQuantity;
     position.profit += profit;
 
-    //Increase the cash balance by profit
-    modifyCashBalance(newOrder, profit, "increase");
+    // //Increase the cash balance by profit
+    // modifyCashBalance(newOrder, profit, "increase");
 
     // Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
@@ -515,12 +522,13 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 async function doesUserHaveEnoughBalance(newOrder, price) {
     const amount_req = newOrder.fixedQuantity * price;
     const balance = await helperBalance(newOrder.user);
+
     const portfolio = await PortfolioModel.findOne({ user: newOrder.user }).populate("positions");
     if (!portfolio) {
-        return true;
+        return amount_req <= balance;
     } else {
         const fetchPositions = await Promise.all(
-            portfolio.positions.map((positionId) => fetchPosition(positionId))
+            portfolio.positions.map((positionId) => fetchPositionWithoutOrders(positionId))
         );
 
         const position = await fetchPositions.find(
@@ -567,8 +575,9 @@ async function doesUserHaveEnoughBalance(newOrder, price) {
                     }
                 }
             }
+            //if there is no position, conduct the usual check
         } else {
-            return true;
+            return amount_req <= balance;
         }
     }
 }
@@ -588,6 +597,7 @@ async function fillOrder(order) {
                     price: price,
                 };
             }
+            console.log("Returns ", !(await doesUserHaveEnoughBalance(order, price)));
             order.filledStatus = "filled";
             order.marketStatus = "open";
             order.unitPrice = price;
