@@ -27,12 +27,34 @@ class CompaniesController {
             );
             const jsonArray = await csvtojson().fromString(response.data);
 
-            for (let object of jsonArray) {
-                if (object.status === "Active") {
-                    const company = new Company({ symbol: object.symbol, name: object.name });
-                    await company.save(); // save the company to the database
+            // Create a new set of active companies
+            const activeCompanies = new Set(
+                jsonArray
+                    .filter((object) => object.status === "Active")
+                    .map((object) => object.symbol)
+            );
+
+            // Find all companies in the database
+            const companies = await Company.find();
+
+            for (let company of companies) {
+                if (activeCompanies.has(company.symbol)) {
+                    // If the company is active, remove it from the set
+                    activeCompanies.delete(company.symbol);
+                } else {
+                    // If the company is not active, delete it from the database
+                    await Company.deleteOne({ _id: company._id });
                 }
             }
+
+            // The set now contains only the symbols of companies that are active but not in the database
+            // Add these companies to the database
+            for (let symbol of activeCompanies) {
+                const object = jsonArray.find((object) => object.symbol === symbol);
+                const company = new Company({ symbol: object.symbol, name: object.name });
+                await company.save();
+            }
+
             this.lastUpdatedTime = Math.floor(Date.now() / 1000);
         } catch (err) {
             console.error(err);
