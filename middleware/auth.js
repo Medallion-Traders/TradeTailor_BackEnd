@@ -33,7 +33,7 @@ const verifyToken = async (req, res, next) => {
             return res.status(401).json({ message: "Token Expired" });
         }
 
-        console.log(error);
+        //console.log(error);
         return res.status(400).json({ message: "Internal Server Error" });
     }
 };

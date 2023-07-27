@@ -13,9 +13,9 @@ export async function fetchMarketStatus() {
 }
 
 export async function checkMarketStatusAndFillOrders() {
-    //console.log("Checking market status and filling orders");
-    //console.log(isMarketOpenFunc(uniqueTime));
-    console.log(isMarketOpen());
+    ////console.log("Checking market status and filling orders");
+    ////console.log(isMarketOpenFunc(uniqueTime));
+    //console.log(isMarketOpen());
     if (!isMarketOpen()) {
         return;
     }
@@ -60,7 +60,7 @@ export async function snapshotProfits() {
         });
 
         if (!portfolio) {
-            console.log(`No portfolio found for user ${user.username}`);
+            //console.log(`No portfolio found for user ${user.username}`);
             totalProfits = 0;
         } else {
             totalProfits = portfolio.positions.reduce((sum, position) => sum + position.profit, 0);

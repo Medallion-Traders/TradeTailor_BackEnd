@@ -63,7 +63,7 @@
 //             useNewUrlParser: true,
 //             useUnifiedTopology: true,
 //         });
-//         console.log("MongoDB Connected...");
+//         //console.log("MongoDB Connected...");
 //     } catch (error) {
 //         console.error("Failed to connect to MongoDB ", error);
 //         process.exit(1);
@@ -80,7 +80,7 @@
 //     await setupWebSocket(server, process.env.JWT_SECRET);
 
 //     server.listen(process.env.PORT || 3001, () =>
-//         console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)
+//         //console.log(`SERVER STARTED ON ${process.env.REACT_APP_SERVER_URL}`)
 //     );
 
 //     //Initialize market status
@@ -117,11 +117,11 @@ dotenv.config();
 // This function sets up all the middleware for the app
 function setupMiddleware(app) {
     app.use(cors({ origin: process.env.REACT_APP_URL }));
-    app.use(express.json());
     app.use(helmet());
     app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
     app.use(morgan("common"));
     app.use(bodyParser.urlencoded({ extended: true }));
+    app.use(express.json());
 }
 
 // This function sets up all the routes for the app

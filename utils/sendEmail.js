@@ -24,7 +24,7 @@ const sendEmail = async (newUser) => {
 
     try {
         await sgMail.send(msg);
-        console.log(`Email sent to ${email}`);
+        //console.log(`Email sent to ${email}`);
     } catch (error) {
         console.error(`Failed to send email: ${error}`);
     }

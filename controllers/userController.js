@@ -114,7 +114,7 @@ export const verifyEmail = async (req, res) => {
 
         return res.redirect(`${process.env.REACT_APP_URL}`);
     } catch (error) {
-        console.log(error);
+        //console.log(error);
         res.status(500).send("Internal Server Error");
     }
 };
@@ -124,7 +124,7 @@ export const getUserBalance = async (req, res) => {
 
     try {
         const user = await UserModel.findById(userId);
-        // console.log("user balance is @getUserBalance", user.balance);
+        // //console.log("user balance is @getUserBalance", user.balance);
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -218,7 +218,7 @@ export const getFriendProfile = async (req, res) => {
         res.status(200).json(publicDetails);
     } catch (error) {
         res.status(500).json({ message: "Something went wrong" });
-        console.log(error);
+        //console.log(error);
     }
 };
 
@@ -247,7 +247,7 @@ export async function getFriendClosedPositions(req, res) {
         });
 
         if (!portfolio) {
-            console.log(`No portfolio found for user ${ownerId}`);
+            //console.log(`No portfolio found for user ${ownerId}`);
             res.status(200).json([]);
             return;
         }
@@ -512,16 +512,16 @@ export const resetBalance = async (req, res) => {
             );
 
             await TradeSummaryModel.deleteMany({ user: userId }).then(() => {
-                console.log("Trade summary deleted");
+                //console.log("Trade summary deleted");
             });
             await PortfolioModel.findByIdAndDelete(portfolio._id).then(() => {
-                console.log("Portfolio summary deleted");
+                //console.log("Portfolio summary deleted");
             });
             await DailyProfitModel.deleteMany({ user: userId }).then(() => {
-                console.log("Daily Profit Model summary deleted");
+                //console.log("Daily Profit Model summary deleted");
             });
             await SnapshotModel.deleteOne({ user: userId }).then(() => {
-                console.log("Snapshot Model deleted");
+                //console.log("Snapshot Model deleted");
             });
 
             const savedUser = await user.save();

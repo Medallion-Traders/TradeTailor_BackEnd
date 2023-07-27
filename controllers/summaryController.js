@@ -14,7 +14,7 @@ async function getPendingOrders(req, res) {
             user: userId,
             filledStatus: "pending",
         });
-        // console.log("orders", orders);
+        // //console.log("orders", orders);
         res.status(200).json(orders);
     } catch (err) {
         console.error(`Function getPendingOrders broke and raised ${err}`);
@@ -33,7 +33,7 @@ async function getOpenPositions(req, res) {
         });
 
         if (!portfolio) {
-            console.log(`No portfolio found for user ${userId}`);
+            ////console.log(`No portfolio found for user ${userId}`);
             res.status(200).json([]);
             return;
         }
@@ -56,7 +56,7 @@ async function getClosedPositions(req, res) {
         });
 
         if (!portfolio) {
-            console.log(`No portfolio found for user ${userId}`);
+            ////console.log(`No portfolio found for user ${userId}`);
             res.status(200).json([]);
             return;
         }
@@ -140,7 +140,7 @@ async function getLeaderboard(req, res) {
 
         return res.status(200).json({ topUsers, currentUser: currentUserData });
     } catch (error) {
-        console.log(error);
+        ////console.log(error);
         return res.status(500).json({ message: "Server error" });
     }
 }
@@ -164,8 +164,8 @@ async function getTodaysOpenPositions(userId) {
         .toISOString()
         .slice(0, 10);
 
-    //console.log("Today's date is ", new Date(todayUtc));
-    //console.log("Tommorow's date is ", new Date(tomorrowUtc));
+    ////console.log("Today's date is ", new Date(todayUtc));
+    ////console.log("Tommorow's date is ", new Date(tomorrowUtc));
     const tradeSummary = await TradeSummaryModel.findOne({
         user: userId,
         date: {
@@ -274,7 +274,7 @@ async function getRealisedProfits(userId) {
     });
     let result = 0;
     if (!portfolio) {
-        console.log(`No portfolio found for user ${userId}`);
+        ////console.log(`No portfolio found for user ${userId}`);
         emitUpdate("getRealisedProfits", result, userId);
         return;
     }
@@ -293,14 +293,14 @@ async function getUnrealisedProfits(userId) {
             match: { positionStatus: "open" },
         });
         if (!portfolio) {
-            console.log(`No portfolio found for user ${userId}`);
+            ////console.log(`No portfolio found for user ${userId}`);
             return 0;
         }
 
         let totalUnrealisedProfits = 0;
         for (const position of portfolio.positions) {
             const current_price = await getCurrentPrice(position.symbol);
-            console.log(position.symbol, current_price);
+            ////console.log(position.symbol, current_price);
             if (position.positionType === "long") {
                 totalUnrealisedProfits +=
                     (current_price - position.averagePrice) * position.quantity;
@@ -311,8 +311,8 @@ async function getUnrealisedProfits(userId) {
         }
         return totalUnrealisedProfits;
     } catch (err) {
-        console.log(`Error fetching unrealised profits for user ${userId}`);
-        console.log(err);
+        //console.log(`Error fetching unrealised profits for user ${userId}`);
+        //console.log(err);
     }
 }
 
@@ -322,7 +322,7 @@ async function getPortfolioValue(userId) {
         match: { positionStatus: "open" },
     });
     if (!portfolio) {
-        console.log(`No portfolio found for user ${userId}`);
+        //console.log(`No portfolio found for user ${userId}`);
         return 0;
     }
 
@@ -338,7 +338,7 @@ async function getPortfolioValue(userId) {
             totalValue += profit;
         }
     }
-    console.log(totalValue);
+    //console.log(totalValue);
     return totalValue;
 }
 //-----------------------INITIALSING CONSTANT EMIT FUNCTIONS-----------------------
@@ -356,7 +356,7 @@ async function initializeUnrealisedProfitsAndPortfolioValue(userId) {
         await snapshot.save();
     }
 
-    console.log("Snapshot model , ", snapshot);
+    //console.log("Snapshot model , ", snapshot);
 
     emitUpdate("getUnrealisedProfits", snapshot.lastUnrealisedProfit, userId);
     emitUpdate("getPortfolioValue", snapshot.lastPortfolioValue, userId);
@@ -372,7 +372,7 @@ async function updateUnrealisedProfitsAndPortfolioValue(userId) {
 
     await snapshot.save();
 
-    console.log("SNAPSHOT MODEL : ", snapshot);
+    //console.log("SNAPSHOT MODEL : ", snapshot);
 }
 
 export {

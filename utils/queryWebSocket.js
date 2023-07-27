@@ -14,12 +14,12 @@ async function getCurrentPrice(symbol) {
         const symbol_price_object = await axios
             .get(`${process.env.REACT_APP_WEBSOCKET_URL}/webSocket/price/${symbol}`)
             .catch((error) => {
-                console.log(error);
+                //console.log(error);
             });
         // Extract the stock price from the { symbol, price } response
         return symbol_price_object.data.price;
     } catch (e) {
-        console.log(e);
+        //console.log(e);
     }
 }
 
@@ -43,12 +43,12 @@ async function getCurrentMarketStatus() {
         const market_status = await axios
             .get(`${process.env.REACT_APP_WEBSOCKET_URL}/getMarketStatus`)
             .catch((error) => {
-                console.log(error);
+                //console.log(error);
             });
 
         return market_status.data;
     } catch (e) {
-        console.log(e);
+        //console.log(e);
     }
 }
 

@@ -227,7 +227,7 @@ const createNewPosition = handleErrors(async function createNewPosition(newOrder
         profit: 0,
     });
 
-    //console.log(newPosition);
+    ////console.log(newPosition);
 
     await newPosition.save();
 
@@ -396,7 +396,7 @@ async function processLongPosition(newOrder, userId) {
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
 
-                //console.log("New order ", newOrder);
+                ////console.log("New order ", newOrder);
                 let remainderOrder = {
                     user: newOrder.user,
                     symbol: newOrder.symbol,
@@ -411,7 +411,7 @@ async function processLongPosition(newOrder, userId) {
                     direction: newOrder.direction,
                 };
                 remainderOrder = await Order.create(remainderOrder);
-                //console.log("Remainder ", remainderOrder);
+                ////console.log("Remainder ", remainderOrder);
 
                 await createNewPosition(remainderOrder, userId);
                 getTodaysOpenPositions(userId);
@@ -475,7 +475,7 @@ async function processShortPosition(newOrder, userId) {
                 getTodaysClosedPositions(userId);
                 getThisMonthOpenPositions(userId);
                 getThisMonthClosedPositions(userId);
-                //console.log("New order ", newOrder);
+                ////console.log("New order ", newOrder);
                 let remainderOrder = {
                     user: newOrder.user,
                     symbol: newOrder.symbol,
@@ -490,7 +490,7 @@ async function processShortPosition(newOrder, userId) {
                     direction: newOrder.direction,
                 };
                 remainderOrder = await Order.create(remainderOrder);
-                //console.log("Remainder ", remainderOrder);
+                ////console.log("Remainder ", remainderOrder);
                 await createNewPosition(remainderOrder, userId);
                 getTodaysOpenPositions(userId);
                 getThisMonthOpenPositions(userId);
@@ -510,10 +510,10 @@ async function modifyCashBalance(newOrder, amount, instruction) {
 
     if (instruction === "increase") {
         user.balance += amount;
-        console.log("modifyCashBalance increased amount by ", amount);
+        //console.log("modifyCashBalance increased amount by ", amount);
     } else {
         user.balance -= amount;
-        console.log("modifyCashBalance decreased amount by ", amount);
+        //console.log("modifyCashBalance decreased amount by ", amount);
     }
 
     await user.save();
@@ -588,7 +588,7 @@ async function fillOrder(order) {
     if (status) {
         if (order.orderType === "market") {
             const price = await getCurrentPrice(order.symbol);
-            //console.log(price);
+            ////console.log(price);
             if (!(await doesUserHaveEnoughBalance(order, price))) {
                 return {
                     isFilled: false,
@@ -597,7 +597,7 @@ async function fillOrder(order) {
                     price: price,
                 };
             }
-            console.log("Returns ", !(await doesUserHaveEnoughBalance(order, price)));
+            //console.log("Returns ", !(await doesUserHaveEnoughBalance(order, price)));
             order.filledStatus = "filled";
             order.marketStatus = "open";
             order.unitPrice = price;
@@ -757,7 +757,7 @@ function isMarketOpen(currentTime) {
     const openTime = usMarketStatus.local_open;
     const closeTime = usMarketStatus.local_close;
 
-    //console.log(currentTime >= openTime && currentTime <= closeTime);
+    ////console.log(currentTime >= openTime && currentTime <= closeTime);
     return currentTime >= openTime && currentTime <= closeTime;
 }
 

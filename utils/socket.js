@@ -48,11 +48,11 @@ async function setupWebSocket(server, secretKey) {
     });
 
     io.on("connection", async (socket) => {
-        console.log("New client connected");
+        //console.log("New client connected");
         try {
             const userId = socket.decoded?.id; // Extract the user ID from the decoded token
             if (!userId) {
-                console.log("User ID not found");
+                //console.log("User ID not found");
                 return;
             }
 
@@ -70,7 +70,7 @@ async function setupWebSocket(server, secretKey) {
             // Start interval when a client connects
             const intervalId = setInterval(async () => {
                 if (!isMarketOpen()) {
-                    console.log("Market is closed");
+                    //console.log("Market is closed");
                 } else {
                     const unrealisedProfits = await getUnrealisedProfits(userId);
                     const portfolioValue = await getPortfolioValue(userId);
@@ -82,7 +82,7 @@ async function setupWebSocket(server, secretKey) {
             userIntervals.set(userId, intervalId);
 
             socket.on("disconnect", async () => {
-                console.log("Client disconnected");
+                //console.log("Client disconnected");
                 // Leave the room when the client disconnects
                 socket.leave(userId);
 
@@ -95,7 +95,7 @@ async function setupWebSocket(server, secretKey) {
             });
         } catch (err) {
             if (axios.isAxiosError(err)) {
-                console.log(err);
+                //console.log(err);
             } else {
                 console.error(err);
             }

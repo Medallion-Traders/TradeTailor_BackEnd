@@ -43,7 +43,7 @@ async function getStockPercentages(req, res) {
             });
         });
 
-        //console.log(result);
+        ////console.log(result);
         return res.status(200).json(result);
     } catch (error) {
         console.error(error);
