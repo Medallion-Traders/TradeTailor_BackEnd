@@ -1,7 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import XLSX from "xlsx";
-import Company from "../models/company.js";
+import Company from "../models/Company.js";
 
 dotenv.config();
 
