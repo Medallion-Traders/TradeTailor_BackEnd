@@ -88,12 +88,6 @@ export const loginUser = async (req, res) => {
 
         delete user.password;
 
-        // If login is successful, update companies data in the background
-        if (companiesController.needsUpdate()) {
-            companiesController.fetchCompanies().catch((err) => {
-                console.error("Failed to update companies data", err);
-            });
-        }
         return res.status(200).json({ token, user });
     } catch (error) {
         return res.status(500).json({ error: error.message });

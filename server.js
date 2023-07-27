@@ -111,6 +111,7 @@ import charts from "./routes/charts.js";
 import startCrons from "./utils/crons.js";
 import { initializeMarketStatus } from "./utils/queryDB.js";
 import notifications from "./routes/notifications.js";
+import companiesController from "./utils/createCompaniesControllerInstance.js";
 
 dotenv.config();
 
@@ -165,6 +166,13 @@ async function start() {
 
     //Initialize market status
     await initializeMarketStatus();
+
+    //Initialise population of companies list
+    if (companiesController.needsUpdate()) {
+        companiesController.fetchCompanies().catch((err) => {
+            console.error("Failed to update companies data", err);
+        });
+    }
 
     // Start all the cron jobs
     startCrons();
