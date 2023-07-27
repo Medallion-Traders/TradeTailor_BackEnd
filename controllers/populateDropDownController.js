@@ -1,6 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
-import csvtojson from "csvtojson";
+import XLSX from "xlsx";
 
 dotenv.config();
 
@@ -23,9 +23,19 @@ class CompaniesController {
     async fetchCompanies() {
         try {
             const response = await axios.get(
-                `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+                `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`,
+                { responseType: "arraybuffer" }
             );
-            const jsonArray = await csvtojson().fromString(response.data);
+
+            // Parse the Excel data
+            const workbook = XLSX.read(response.data, { type: "buffer" });
+
+            // Assuming the data is on the first sheet
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+
+            // Convert the worksheet to JSON
+            const jsonArray = XLSX.utils.sheet_to_json(worksheet);
 
             for (let object of jsonArray) {
                 if (object.status === "Active") {
@@ -34,7 +44,7 @@ class CompaniesController {
             }
             this.lastUpdatedTime = Math.floor(Date.now() / 1000);
         } catch (err) {
-            console.error(err);
+            console.log(err);
         }
     }
 
