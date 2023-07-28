@@ -48,9 +48,11 @@ const stockFunction = async (req, res) => {
         });
 
         if (transactionType === "buy") {
+            newOrder.direction == "long";
             const result = await processOrder(newOrder, "long");
             handleResponse(result, newOrder, res);
         } else {
+            newOrder.direction == "short";
             const result = await processOrder(newOrder, "short");
             handleResponse(result, newOrder, res);
         }

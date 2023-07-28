@@ -57,7 +57,7 @@ class CompaniesController {
             // Run the operations
             await Company.bulkWrite(bulkOps)
                 .then((input) => {
-                    console.log("Builk write to database of companies success");
+                    console.log("Bulk write to database of companies success");
                 })
                 .catch((err) => {
                     console.log(err);

@@ -24,21 +24,23 @@ export async function checkMarketStatusAndFillOrders() {
     });
 
     const promises = orders.map(async (order) => {
-        const { doesUserHaveEnoughBalance } = await fillOrder(order);
+        const { doesUserHaveEnoughBalance, isFilled, price } = await fillOrder(order);
         let alert;
-        if (doesUserHaveEnoughBalance) {
-            alert = new AlertModel({
-                user: order.user,
-                message: `Your ${order.orderType} order for ${order.symbol} has been filled at ${order.unitPrice}`,
-                isSeen: false,
-            });
-        } else {
+        if (!doesUserHaveEnoughBalance) {
             alert = new AlertModel({
                 user: order.user,
                 message: `Your ${order.orderType} order for ${order.symbol} has been cancelled due to insufficient funds`,
                 isSeen: false,
             });
             await Order.findByIdAndDelete(order._id);
+        } else if (isFilled) {
+            alert = new AlertModel({
+                user: order.user,
+                message: `Your ${order.orderType} order for ${order.symbol} has been filled at ${price}`,
+                isSeen: false,
+            });
+        } else {
+            //Do nothing
         }
         await alert.save();
     });
@@ -77,7 +79,7 @@ export async function snapshotProfits() {
 }
 
 function startCrons() {
-    cron.schedule("2 6 * * *", fetchMarketStatus, {
+    cron.schedule("9 6 * * *", fetchMarketStatus, {
         timezone: "Asia/Singapore",
     });
 

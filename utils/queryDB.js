@@ -743,23 +743,24 @@ async function logTradeSummary(position, userId) {
     }
 }
 
-// Change isMarketOpen to take currentTime as an argument
+//Change isMarketOpen to take currentTime as an argument
 function isMarketOpen(currentTime) {
     if (!currentTime) {
         currentTime = Math.floor(new Date().getTime() / 1000);
     }
-
     if (!usMarketStatus || !usMarketStatus.local_open || !usMarketStatus.local_close) {
         // If the open or close times are not available, assume the market is closed
         return false;
     }
-
     const openTime = usMarketStatus.local_open;
     const closeTime = usMarketStatus.local_close;
-
     ////console.log(currentTime >= openTime && currentTime <= closeTime);
     return currentTime >= openTime && currentTime <= closeTime;
 }
+
+// function isMarketOpen(currentTime) {
+//     return true;
+// }
 
 async function initializeMarketStatus() {
     try {
