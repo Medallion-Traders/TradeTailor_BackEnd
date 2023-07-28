@@ -70,16 +70,18 @@ async function handleResponse(result, newOrder, res) {
             price,
         } = result;
 
-        if (
-            isFilled == undefined ||
-            status_object == undefined ||
-            doesUserHaveEnoughBalance == undefined ||
-            buy_or_sell_message == undefined ||
-            price == undefined
-        ) {
-            throw new Error("Missing parameters in result object");
+        if (isFilled == undefined) {
+            console.log("isFilled is undefined");
         }
-
+        if (status_object == undefined) {
+            console.log("status_object is undefined");
+        }
+        if (buy_or_sell_message == undefined) {
+            console.log("buy_or_sell_message is undefined");
+        }
+        if (price == undefined) {
+            console.log("price is undefined");
+        }
         if (doesUserHaveEnoughBalance) {
             if (isFilled) {
                 if (newOrder.orderType == "market") {
