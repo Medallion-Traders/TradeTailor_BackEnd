@@ -79,7 +79,7 @@ export async function snapshotProfits() {
 }
 
 function startCrons() {
-    cron.schedule("9 6 * * *", fetchMarketStatus, {
+    cron.schedule("9 6 * * 1-5", fetchMarketStatus, {
         timezone: "Asia/Singapore",
     });
 
