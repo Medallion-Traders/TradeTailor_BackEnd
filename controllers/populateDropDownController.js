@@ -8,6 +8,7 @@ dotenv.config();
 class CompaniesController {
     constructor() {
         this.lastUpdatedTime = null;
+        this.x = 0;
     }
 
     needsUpdate() {
@@ -22,10 +23,15 @@ class CompaniesController {
 
     async fetchCompanies() {
         try {
-            const response = await axios.get(
-                `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`,
-                { responseType: "arraybuffer" }
-            );
+            const response = await axios
+                .get(
+                    `https://www.alphavantage.co/query?function=LISTING_STATUS&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`,
+                    { responseType: "arraybuffer" }
+                )
+                .then(() => {
+                    this.x += 1;
+                    console.log(`AlphaVantage Companies list fetched ${this.x} times`);
+                });
 
             const workbook = XLSX.read(response.data, { type: "buffer" });
             const sheetName = workbook.SheetNames[0];
