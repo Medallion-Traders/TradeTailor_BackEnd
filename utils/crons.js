@@ -29,15 +29,17 @@ export async function checkMarketStatusAndFillOrders() {
         if (!doesUserHaveEnoughBalance) {
             alert = new AlertModel({
                 user: order.user,
-                message: `Your ${order.orderType} order for ${order.symbol} has been cancelled due to insufficient funds`,
-                isSeen: false,
+                title: "ORDER CANCELLED",
+                description: `Your ${order.orderType} order for ${order.symbol} has been cancelled due to insufficient funds`,
+                status: "unread",
             });
             await Order.findByIdAndDelete(order._id);
         } else if (isFilled) {
             alert = new AlertModel({
                 user: order.user,
-                message: `Your ${order.orderType} order for ${order.symbol} has been filled at ${price}`,
-                isSeen: false,
+                title: "ORDER FILLED",
+                description: `Your ${order.orderType} order for ${order.symbol} has been filled at ${price}`,
+                status: "unread",
             });
         } else {
             //Do nothing

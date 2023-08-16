@@ -1,6 +1,6 @@
 import { Order } from "../models/Order.js";
 import { fillOrder } from "../utils/queryDB.js";
-import convertUnixToUtc from "../utils/timeConverter.js";
+import convertUnixToLocaleString from "../utils/timeConverter.js";
 
 const createOrder = (userData, orderData) => {
     return new Order({
@@ -116,9 +116,9 @@ async function handleResponse(result, newOrder, res) {
                                     "Your limit order at price " +
                                     newOrder.unitPrice +
                                     " was processed, however, the market is currently closed and only opens from " +
-                                    convertUnixToUtc(status_object.local_open) +
+                                    convertUnixToLocaleString(status_object.local_open) +
                                     " UTC to " +
-                                    convertUnixToUtc(status_object.local_close) +
+                                    convertUnixToLocaleString(status_object.local_close) +
                                     " UTC.",
                             });
                         }
@@ -139,9 +139,9 @@ async function handleResponse(result, newOrder, res) {
                                 "Your market order at price " +
                                 newOrder.unitPrice +
                                 " was processed, however, the market is currently closed and only opens from " +
-                                convertUnixToUtc(status_object.local_open) +
+                                convertUnixToLocaleString(status_object.local_open) +
                                 " UTC to " +
-                                convertUnixToUtc(status_object.local_close) +
+                                convertUnixToLocaleString(status_object.local_close) +
                                 " UTC. Your market order will be immediately filled when the market opens",
                         });
                     }

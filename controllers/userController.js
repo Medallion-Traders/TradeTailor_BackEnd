@@ -11,7 +11,6 @@ import TradeSummaryModel from "../models/TradeSummary.js";
 import DailyProfitModel from "../models/Profit.js";
 import FriendshipModel from "../models/FriendshipModel.js";
 import mongoose from "mongoose";
-import companiesController from "../utils/createCompaniesControllerInstance.js";
 import SnapshotModel from "../models/Snapshot.js";
 
 dotenv.config();

@@ -7,12 +7,16 @@ const AlertSchema = mongoose.Schema(
             ref: "UserModel",
             required: true,
         },
-        message: {
+        title: {
             type: String,
             required: true,
         },
-        isSeen: {
-            type: Boolean,
+        description: {
+            type: String,
+            required: true,
+        },
+        status: {
+            type: String,
             required: true,
         },
     },

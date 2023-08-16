@@ -1,6 +1,6 @@
 const { fillOrder } = require("../utils/queryDB.js");
 const buyAndSellStockController = require("../controllers/buyAndSellStockController.js");
-const convertUnixToUtc = require("../utils/timeConverter.js").default;
+const convertUnixToLocaleString = require("../utils/timeConverter.js").default;
 const { Order } = require("../models/Order.js");
 
 jest.mock("../models/Order.js", () => {
@@ -372,9 +372,9 @@ describe("Order Functions", () => {
             expect(res.json).toHaveBeenCalledWith({
                 message: `Your limit order at price ${
                     order.unitPrice
-                } was processed, however, the market is currently closed and only opens from ${convertUnixToUtc(
+                } was processed, however, the market is currently closed and only opens from ${convertUnixToLocaleString(
                     result.status_object.local_open
-                )} UTC to ${convertUnixToUtc(result.status_object.local_close)} UTC.`,
+                )} UTC to ${convertUnixToLocaleString(result.status_object.local_close)} UTC.`,
             });
         });
 
@@ -404,9 +404,9 @@ describe("Order Functions", () => {
             expect(res.json).toHaveBeenCalledWith({
                 message: `Your market order at price ${
                     order.unitPrice
-                } was processed, however, the market is currently closed and only opens from ${convertUnixToUtc(
+                } was processed, however, the market is currently closed and only opens from ${convertUnixToLocaleString(
                     result.status_object.local_open
-                )} UTC to ${convertUnixToUtc(
+                )} UTC to ${convertUnixToLocaleString(
                     result.status_object.local_close
                 )} UTC. Your market order will be immediately filled when the market opens`,
             });

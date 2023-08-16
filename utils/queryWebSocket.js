@@ -52,4 +52,20 @@ async function getCurrentMarketStatus() {
     }
 }
 
-export { getCurrentPrice, getCurrentMarketStatus };
+async function getCurrentMarketStatusEndpoint(req, res) {
+    try {
+        //Query the websocket to get current_price
+        const market_status = await axios
+            .get(`${process.env.REACT_APP_WEBSOCKET_URL}/getMarketStatus`)
+            .catch((error) => {
+                //console.log(error);
+            });
+
+        return res.status(200).json(market_status.data);
+    } catch (e) {
+        //console.log(e);
+        return res.status(400).json("Error querying get market status endpoint " + "\n" + e);
+    }
+}
+
+export { getCurrentPrice, getCurrentMarketStatus, getCurrentMarketStatusEndpoint };

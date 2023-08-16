@@ -18,6 +18,7 @@ import startCrons from "./utils/crons.js";
 import { initializeMarketStatus } from "./utils/queryDB.js";
 import notifications from "./routes/notifications.js";
 import companiesController from "./utils/createCompaniesControllerInstance.js";
+import status from "./routes/status.js";
 
 dotenv.config();
 
@@ -40,8 +41,9 @@ function setupRoutes(app) {
     app.head("/", (req, res) => res.end());
     app.use("/summary", verifyToken, summary);
     app.use("/charts", verifyToken, charts);
-    app.use("/notifications", verifyToken, notifications);
+    app.use("/notifications", notifications);
     app.use("/posts", posts);
+    app.use("/status", status);
 }
 
 async function connectDatabase() {

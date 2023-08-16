@@ -261,9 +261,13 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     //Increase the cash balance by profit
     modifyCashBalance(newOrder, profit, "increase");
 
+    console.log("#1");
+
     // Set the marketStatus of the newOrder to be closed
     newOrder.marketStatus = "closed";
     await newOrder.save();
+
+    console.log("#2");
 
     // Add the new order to the closing orders
     position.closingOrders.push(newOrder._id);
@@ -271,14 +275,22 @@ const closeLongPosition = handleErrors(async function closeLongPosition(position
     // Close all openingOrders, both closed and open
     await closeOrders(position.openingOrders);
 
+    console.log("#3");
+
     // Save the updated position
     await position.save();
+
+    console.log("#4");
 
     //Increase the cash balance
     modifyCashBalance(newOrder, position.quantity * newOrder.unitPrice, "increase");
 
+    console.log("#5");
+
     //Log the position status
     logTradeSummary(position, newOrder.user);
+
+    console.log("#6");
 });
 
 // Utility function for handling partial long position closure
@@ -740,6 +752,7 @@ async function logTradeSummary(position, userId) {
             getThisMonthClosedPositions(userId);
         }
         await tradeSummary.save();
+        console.log(tradeSummary);
     }
 }
 
