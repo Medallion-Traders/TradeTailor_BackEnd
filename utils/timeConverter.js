@@ -19,7 +19,7 @@ function convertUnixToLocaleString(unixTimestamp) {
     // // //console.log(utcTimeString);
     // return utcTimeString;
 
-    return new Date(unixTimestamp).toLocaleString();
+    return new Date(unixTimestamp).toLocaleTimeString();
 }
 
 export default convertUnixToLocaleString;
